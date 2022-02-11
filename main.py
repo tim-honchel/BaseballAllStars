@@ -157,6 +157,7 @@ def display_players(players):
     for player in players:
         print(player.description)
 
+@app.route("/index", methods=["GET","POST"])
 @app.route("/", methods=["GET","POST"])
 def index():
     years_form = Years_Form(crsf_enabled=False)
@@ -218,6 +219,7 @@ def considerations():
     pitchers = generate_pitchers(pitcher_urls)
     batters = generate_batters(batter_urls)
     return(render_template("considerations.html", year_start = year1, year_ending = year2, pitchers=pitchers, batters=batters))
+
 
 if __name__ == "__main__":
     port = os.environ.get("PORT", 5000)
