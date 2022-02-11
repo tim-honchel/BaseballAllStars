@@ -3,4 +3,4 @@ flask_wtf
 wtforms
 bs4
 requests
-
+html5lib
