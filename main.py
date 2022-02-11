@@ -218,8 +218,8 @@ def considerations():
     batters = generate_batters(batter_urls)
     return(render_template("considerations.html", year_start = year1, year_ending = year2, pitchers=pitchers, batters=batters))
 
-
-app.run()
+if __name__ == "__main__":
+    app.run(debug=False)
 
 # ORIGINAL CODE BEGINS HERE
 
