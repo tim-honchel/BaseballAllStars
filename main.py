@@ -1,3 +1,4 @@
+import os
 from bs4 import BeautifulSoup
 import requests
 from flask import Flask, render_template, redirect
@@ -219,68 +220,5 @@ def considerations():
     return(render_template("considerations.html", year_start = year1, year_ending = year2, pitchers=pitchers, batters=batters))
 
 if __name__ == "__main__":
-    app.run(debug=False)
-
-# ORIGINAL CODE BEGINS HERE
-
-# Input and validate the historical range
-print()
-print("Generate a historical MLB all-star team for a select time period.".upper())
-print()
-year1 = 0
-year2 = 0
-while year1 < 1900 or year1 > 2021:
-    year1 = input("Enter the starting year of the time period: ")
-    try:
-        year1 = int(year1)
-        if year1 < 1900 or year1 > 2021:
-            print("Invalid year.")
-        break
-    except ValueError:
-        year1 = 0
-        print("Invalid year.")
-while year2 < 1900 or year2 > 2021 or year2 < year1:
-    year2 = input("Enter the ending year of the time period: ")
-    try:
-        year2 = int(year2)
-        if year2 < 1900 or year2 > 2021 or year2 < year1:
-            print("Invalid year.")
-        break
-    except ValueError:
-        print("Invalid year")
-
-# Use string interpolation to create the Fangraphs URLs that show the top players at each position
-pitcher_urls = [
-f'https://www.fangraphs.com/leaders.aspx?pos=all&stats=pit&lg=all&qual=y&type=c,59,6,42,4,11,24,13&season={year2}&month=0&season1={year1}&ind=0&team=0&rost=0&age=0&filter=&players=0&startdate={year1}-01-01&enddate={year2}-12-31&page=1_9&sort=3,d',
-f'https://www.fangraphs.com/leaders.aspx?pos=all&stats=rel&lg=all&qual=y&type=c,59,6,42,4,11,24,13&season={year2}&month=0&season1={year1}&ind=0&team=0&rost=0&age=0&filter=&players=0&startdate={year1}-01-01&enddate={year2}-12-31&page=1_7&sort=3,d'
-]
-batter_urls = [
-f'https://www.fangraphs.com/leaders.aspx?pos=c&stats=bat&lg=all&qual=y&type=c,58,23,37,38,7,12,11,13,21,6,203,199&season={year2}&month=0&season1={year1}&ind=0&team=0&rost=0&age=0&filter=&players=0&startdate={year1}-01-01&enddate={year2}-12-31&page=1_4&sort=3,d',
-f'https://www.fangraphs.com/leaders.aspx?pos=1b&stats=bat&lg=all&qual=y&type=c,58,23,37,38,7,12,11,13,21,6,203,199&season={year2}&month=0&season1={year1}&ind=0&team=0&rost=0&age=0&filter=&players=0&startdate={year1}-01-01&enddate={year2}-12-31&page=1_4&sort=3,d',
-f'https://www.fangraphs.com/leaders.aspx?pos=2b&stats=bat&lg=all&qual=y&type=c,58,23,37,38,7,12,11,13,21,6,203,199&season={year2}&month=0&season1={year1}&ind=0&team=0&rost=0&age=0&filter=&players=0&startdate={year1}-01-01&enddate={year2}-12-31&page=1_4&sort=3,d',
-f'https://www.fangraphs.com/leaders.aspx?pos=3b&stats=bat&lg=all&qual=y&type=c,58,23,37,38,7,12,11,13,21,6,203,199&season={year2}&month=0&season1={year1}&ind=0&team=0&rost=0&age=0&filter=&players=0&startdate={year1}-01-01&enddate={year2}-12-31&page=1_4&sort=3,d',
-f'https://www.fangraphs.com/leaders.aspx?pos=ss&stats=bat&lg=all&qual=y&type=c,58,23,37,38,7,12,11,13,21,6,203,199&season={year2}&month=0&season1={year1}&ind=0&team=0&rost=0&age=0&filter=&players=0&startdate={year1}-01-01&enddate={year2}-12-31&page=1_4&sort=3,d',
-f'https://www.fangraphs.com/leaders.aspx?pos=lf&stats=bat&lg=all&qual=y&type=c,58,23,37,38,7,12,11,13,21,6,203,199&season={year2}&month=0&season1={year1}&ind=0&team=0&rost=0&age=0&filter=&players=0&startdate={year1}-01-01&enddate={year2}-12-31&page=1_4&sort=3,d',
-f'https://www.fangraphs.com/leaders.aspx?pos=cf&stats=bat&lg=all&qual=y&type=c,58,23,37,38,7,12,11,13,21,6,203,199&season={year2}&month=0&season1={year1}&ind=0&team=0&rost=0&age=0&filter=&players=0&startdate={year1}-01-01&enddate={year2}-12-31&page=1_4&sort=3,d',
-f'https://www.fangraphs.com/leaders.aspx?pos=rf&stats=bat&lg=all&qual=y&type=c,58,23,37,38,7,12,11,13,21,6,203,199&season={year2}&month=0&season1={year1}&ind=0&team=0&rost=0&age=0&filter=&players=0&startdate={year1}-01-01&enddate={year2}-12-31&page=1_4&sort=3,d',
-f'https://www.fangraphs.com/leaders.aspx?pos=dh&stats=bat&lg=all&qual=y&type=c,58,23,37,38,7,12,11,13,21,6,203,199&season={year2}&month=0&season1={year1}&ind=0&team=0&rost=0&age=0&filter=&players=0&startdate={year1}-01-01&enddate={year2}-12-31&page=1_2&sort=3,d'
-]
-
-print()
-print("Scraping web data...")
-print()
-
-# Scrape the pitcher pages and display the data in a useful format
-print("Top pitchers for consideration:".upper())
-pitchers = generate_pitchers(pitcher_urls)
-display_players(pitchers)
-print()
-
-# Scrape the batter pages and display the data in a useful format
-print("Top position players for consideration:".upper())
-batters = generate_batters(batter_urls)
-display_players(batters)
-print()
-
-print()
-print("Complete!".upper())
+    port = os.environ.get("PORT", 5000)
+    app.run(debug=False, host="0.0.0.0", port=port)
