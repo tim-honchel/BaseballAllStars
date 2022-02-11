@@ -1,13 +1,15 @@
-import webbrowser
 from bs4 import BeautifulSoup
 import requests
-import pandas as pd
-import re
-import html5lib
-from flask import Flask, jsonify
+from flask import Flask, render_template, redirect
+from flask_wtf import FlaskForm
+from wtforms import StringField, SubmitField
+from wtforms.validators import DataRequired
 
 # create the web application
-# app = Flask(__name__)
+
+
+app = Flask(__name__)
+app.config["SECRET_KEY"] = "mysecret"
 
 
 # each pitcher will be an object with statistical member fields
@@ -44,6 +46,12 @@ class Batter:
     dwar = 0
     description = ""
 
+
+# form to input time period
+class Years_Form(FlaskForm):
+    year_a = StringField("Enter the starting year of the time period: ")
+    year_b = StringField("Enter the ending year of the time period: ")
+    submit = SubmitField("Search this time period")
 
 # scrape each Fangraphs page and create a batter object for each row
 def generate_batters(urls):
@@ -148,8 +156,72 @@ def display_players(players):
     for player in players:
         print(player.description)
 
+@app.route("/", methods=["GET","POST"])
+def index():
+    years_form = Years_Form(crsf_enabled=False)
+    return(render_template("index.html", template_form=years_form))
 
-# MAIN BEGINS HERE
+@app.route("/loading", methods=["GET","POST"])
+def loading():
+    years_form = Years_Form(crsf_enabled=False)
+    year1 = years_form.year_a.data
+    year2 = years_form.year_b.data
+    try:
+        year1 = int(year1)
+        if year1 < 1900 or year1 > 2021:
+            return redirect("/")
+    except ValueError:
+        return redirect("/")
+    try:
+        year2 = int(year2)
+        if year2 < 1900 or year2 > 2021 or year2 < year1:
+            return redirect("/")
+    except ValueError:
+        return redirect("/")
+    return (render_template("loading.html", template_form=years_form, year1=year1, year2=year2))
+
+
+@app.route("/considerations", methods=["GET","POST"])
+def considerations():
+    years_form = Years_Form(crsf_enabled=False)
+    year1 = years_form.year_a.data
+    year2 = years_form.year_b.data
+    try:
+        year1 = int(year1)
+        if year1 < 1900 or year1 > 2021:
+            return redirect("/")
+    except ValueError:
+        return redirect("/")
+    try:
+        year2 = int(year2)
+        if year2 < 1900 or year2 > 2021 or year2 < year1:
+            return redirect("/")
+    except ValueError:
+        return redirect("/")
+    # Use string interpolation to create the Fangraphs URLs that show the top players at each position
+    pitcher_urls = [
+        f'https://www.fangraphs.com/leaders.aspx?pos=all&stats=pit&lg=all&qual=y&type=c,59,6,42,4,11,24,13&season={year2}&month=0&season1={year1}&ind=0&team=0&rost=0&age=0&filter=&players=0&startdate={year1}-01-01&enddate={year2}-12-31&page=1_9&sort=3,d',
+        f'https://www.fangraphs.com/leaders.aspx?pos=all&stats=rel&lg=all&qual=y&type=c,59,6,42,4,11,24,13&season={year2}&month=0&season1={year1}&ind=0&team=0&rost=0&age=0&filter=&players=0&startdate={year1}-01-01&enddate={year2}-12-31&page=1_7&sort=3,d'
+    ]
+    batter_urls = [
+        f'https://www.fangraphs.com/leaders.aspx?pos=c&stats=bat&lg=all&qual=y&type=c,58,23,37,38,7,12,11,13,21,6,203,199&season={year2}&month=0&season1={year1}&ind=0&team=0&rost=0&age=0&filter=&players=0&startdate={year1}-01-01&enddate={year2}-12-31&page=1_4&sort=3,d',
+        f'https://www.fangraphs.com/leaders.aspx?pos=1b&stats=bat&lg=all&qual=y&type=c,58,23,37,38,7,12,11,13,21,6,203,199&season={year2}&month=0&season1={year1}&ind=0&team=0&rost=0&age=0&filter=&players=0&startdate={year1}-01-01&enddate={year2}-12-31&page=1_4&sort=3,d',
+        f'https://www.fangraphs.com/leaders.aspx?pos=2b&stats=bat&lg=all&qual=y&type=c,58,23,37,38,7,12,11,13,21,6,203,199&season={year2}&month=0&season1={year1}&ind=0&team=0&rost=0&age=0&filter=&players=0&startdate={year1}-01-01&enddate={year2}-12-31&page=1_4&sort=3,d',
+        f'https://www.fangraphs.com/leaders.aspx?pos=3b&stats=bat&lg=all&qual=y&type=c,58,23,37,38,7,12,11,13,21,6,203,199&season={year2}&month=0&season1={year1}&ind=0&team=0&rost=0&age=0&filter=&players=0&startdate={year1}-01-01&enddate={year2}-12-31&page=1_4&sort=3,d',
+        f'https://www.fangraphs.com/leaders.aspx?pos=ss&stats=bat&lg=all&qual=y&type=c,58,23,37,38,7,12,11,13,21,6,203,199&season={year2}&month=0&season1={year1}&ind=0&team=0&rost=0&age=0&filter=&players=0&startdate={year1}-01-01&enddate={year2}-12-31&page=1_4&sort=3,d',
+        f'https://www.fangraphs.com/leaders.aspx?pos=lf&stats=bat&lg=all&qual=y&type=c,58,23,37,38,7,12,11,13,21,6,203,199&season={year2}&month=0&season1={year1}&ind=0&team=0&rost=0&age=0&filter=&players=0&startdate={year1}-01-01&enddate={year2}-12-31&page=1_4&sort=3,d',
+        f'https://www.fangraphs.com/leaders.aspx?pos=cf&stats=bat&lg=all&qual=y&type=c,58,23,37,38,7,12,11,13,21,6,203,199&season={year2}&month=0&season1={year1}&ind=0&team=0&rost=0&age=0&filter=&players=0&startdate={year1}-01-01&enddate={year2}-12-31&page=1_4&sort=3,d',
+        f'https://www.fangraphs.com/leaders.aspx?pos=rf&stats=bat&lg=all&qual=y&type=c,58,23,37,38,7,12,11,13,21,6,203,199&season={year2}&month=0&season1={year1}&ind=0&team=0&rost=0&age=0&filter=&players=0&startdate={year1}-01-01&enddate={year2}-12-31&page=1_4&sort=3,d',
+        f'https://www.fangraphs.com/leaders.aspx?pos=dh&stats=bat&lg=all&qual=y&type=c,58,23,37,38,7,12,11,13,21,6,203,199&season={year2}&month=0&season1={year1}&ind=0&team=0&rost=0&age=0&filter=&players=0&startdate={year1}-01-01&enddate={year2}-12-31&page=1_2&sort=3,d'
+    ]
+    pitchers = generate_pitchers(pitcher_urls)
+    batters = generate_batters(batter_urls)
+    return(render_template("considerations.html", year_start = year1, year_ending = year2, pitchers=pitchers, batters=batters))
+
+
+app.run()
+
+# ORIGINAL CODE BEGINS HERE
 
 # Input and validate the historical range
 print()

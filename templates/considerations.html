@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>Tim Honchel - Historical MLB All Stars</title>
+    <meta content="IE=edge" http-equiv="X-UA-Compatible">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="title" content="Historical MLB All Stars" property="og:title">
+    <meta name="description" content="Generate a historical MLB all star team for any time period" property="og:description">
+    <meta name="author" content="Tim Honchel" >
+  </head>
+  <body>
+    <h1>All-Star Team Consideration</h1>
+    <p>For the time period {{year_start}} - {{year_ending}}, we will select 12 pitchers and 13 position players from the candidates below:</p>
+    <br>
+    <p><b>Pitchers:</b></p>
+    {% for pitcher in pitchers %}
+    <p style="line-height:0%">{{pitcher.description}}</p>
+    {% endfor %}
+    <br>
+    <p><b>Position Players:</b></p>
+    {% for batter in batters %}
+    <p style="line-height:0%">{{batter.description}}</p>
+    {% endfor %}
+    <br>
+  <a href="/">Generate a new search</a>
+  </body>

@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>Tim Honchel - Historical MLB All Stars</title>
+    <meta content="IE=edge" http-equiv="X-UA-Compatible">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="title" content="Historical MLB All Stars" property="og:title">
+    <meta name="description" content="Generate a historical MLB all star team for any time period" property="og:description">
+    <meta name="author" content="Tim Honchel" >
+  </head>
+  <body>
+    <h1><h1>Loading your results...</h1></h1>
+    <p>This could take a few seconds, or up to a minute depending on Internet speed. Searching Fangraphs data for the time period {{year1}}-{{year2}}.</p>
+    <form action ="/considerations" method="POST">
+      <input type="submit" id="submit_button" style="display:none"></input>
+      <p style="display:none">{{template_form.year_a}}</p>
+      <p style="display:none">{{template_form.year_b}}</p>
+      <p style="display:none"> {{template_form.submit}}</p>
+    </form>
+  </body>
+  <script type="text/javascript">
+    document.getElementById("submit_button").click()
+  </script>
