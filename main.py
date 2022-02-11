@@ -4,9 +4,43 @@ import requests
 import pandas as pd
 import re
 import html5lib
+from flask import Flask, jsonify
+
+app = Flask(__name__)
+
+class Pitcher:
+
+    name = ""
+    war = 0
+    era = 0
+    whip = 0
+    wins = 0
+    saves = 0
+    strikeouts = 0
+    innings = 0
+    description = f"{name} ({war} WAR) - {era} ERA, {whip} WHIP, {wins} W, {saves} SV, {strikeouts} K"
+
+
+class Batter:
+
+    name = ""
+    war = 0
+    avg = 0
+    obp = 0
+    slg = 0
+    runs = 0
+    hits = 0
+    homeruns = 0
+    rbi = 0
+    steals = 0
+    plate_appearances = 0
+    owar = 0
+    dwar = 0
+    description = f"{name} ({war} WAR) - {avg}/{obp}/{slg}, {runs} R, {hits} H, {homeruns} HR, {rbi} RBI, {steals} SB"
 
 
 def generate_batters(urls):
+    batters = []
     for url in urls:
         req = requests.get(url)
         soup = BeautifulSoup(req.content, 'html5lib')
@@ -16,20 +50,46 @@ def generate_batters(urls):
             raw_row = str(table.find(id=f"LeaderBoard1_dg1_ctl00__{row_num}"))
             raw_row_split = raw_row.split("</td>")
             col_num = 0
+            batter = Batter()
             for raw_column in raw_row_split:
                 match col_num:
                     case 0 | 2 | 15:
                         0
-                    case 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14:
-                        column_data = raw_column.split(">", 1)[1]
-                        #print(col_num, ": ", column_data)
                     case 1:
-                        column_data = raw_column.split(">", 1)[1].split(">", 1)[1].split("<", 1)[0]
-                        print(column_data)
+                        batter.name = raw_column.split(">", 1)[1].split(">", 1)[1].split("<", 1)[0]
+                    case 3:
+                        batter.war = raw_column.split(">", 1)[1]
+                    case 4:
+                        batter.avg = raw_column.split(">", 1)[1]
+                    case 5:
+                        batter.obp = raw_column.split(">", 1)[1]
+                    case 6:
+                        batter.slg = raw_column.split(">", 1)[1]
+                    case 7:
+                        batter.hits = raw_column.split(">", 1)[1]
+                    case 8:
+                        batter.runs = raw_column.split(">", 1)[1]
+                    case 9:
+                        batter.homeruns = raw_column.split(">", 1)[1]
+                    case 10:
+                        batter.rbi = raw_column.split(">", 1)[1]
+                    case 11:
+                        batter.steals = raw_column.split(">", 1)[1]
+                    case 12:
+                        batter.plate_appearances = raw_column.split(">", 1)[1]
+                    case 13:
+                        batter.owar = raw_column.split(">", 1)[1]
+                    case 14:
+                        batter.dwar = raw_column.split(">", 1)[1]
                 col_num += 1
+            batter.description = f"{batter.name} ({batter.war} WAR) - {batter.avg}/{batter.obp}/{batter.slg}, {batter.runs} R, {batter.hits} H, {batter.homeruns} HR, {batter.rbi} RBI, {batter.steals} SB"
+            if batter.name != "":
+                batters.append(batter)
+    return batters
 
 
 def generate_pitchers(urls):
+    pitchers = []
     for url in urls:
         req = requests.get(url)
         soup = BeautifulSoup(req.content, 'html5lib')
@@ -39,20 +99,40 @@ def generate_pitchers(urls):
             raw_row = str(table.find(id=f"LeaderBoard1_dg1_ctl00__{row_num}"))
             raw_row_split = raw_row.split("</td>")
             col_num = 0
+            pitcher = Pitcher()
             for raw_column in raw_row_split:
                 match col_num:
                     case 0 | 2 | 10:
                         0
-                    case 3 | 4 | 5 | 6 | 7 | 8 | 9:
-                        column_data = raw_column.split(">", 1)[1]
-                        #print(col_num, ": ", column_data)
                     case 1:
-                        column_data = raw_column.split(">", 1)[1].split(">", 1)[1].split("<", 1)[0]
-                        print(column_data)
+                        pitcher.name = raw_column.split(">", 1)[1].split(">", 1)[1].split("<", 1)[0]
+                    case 3:
+                        pitcher.war = raw_column.split(">", 1)[1]
+                    case 4:
+                        pitcher.era = raw_column.split(">", 1)[1]
+                    case 5:
+                        pitcher.whip = raw_column.split(">", 1)[1]
+                    case 6:
+                        pitcher.wins = raw_column.split(">", 1)[1]
+                    case 7:
+                        pitcher.saves = raw_column.split(">", 1)[1]
+                    case 8:
+                        pitcher.strikeouts = raw_column.split(">", 1)[1]
+                    case 9:
+                        pitcher.innings = raw_column.split(">", 1)[1]
                 col_num += 1
+            pitcher.description = f"{pitcher.name} ({pitcher.war} WAR) - {pitcher.era} ERA, {pitcher.whip} WHIP, {pitcher.wins} W, {pitcher.saves} SV, {pitcher.strikeouts} K"
+            if pitcher.name != "":
+                pitchers.append(pitcher)
+    return pitchers
 
+
+def display_players(players):
+    for player in players:
+        print(player.description)
 
 # Input and validate the historical range
+
 
 print()
 print("Generate a historical MLB all-star team for a select time period.".upper())
@@ -103,11 +183,13 @@ print("Scraping web data...")
 print()
 
 print("Top pitchers for consideration:".upper())
-generate_pitchers(pitcher_urls)
+pitchers = generate_pitchers(pitcher_urls)
+display_players(pitchers)
 print()
 
 print("Top position players for consideration:".upper())
-generate_batters(batter_urls)
+batters = generate_batters(batter_urls)
+display_players(batters)
 print()
 
 print()
