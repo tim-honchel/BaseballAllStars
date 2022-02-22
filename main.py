@@ -58,7 +58,7 @@ class Years_Form(FlaskForm):
 def generate_batters(urls):
     batters = []
     for url in urls:
-        req = requests.get(url)
+        req = requests.get(url, timeout=60)
         soup = BeautifulSoup(req.content, 'html5lib')
         table = soup.find(id="LeaderBoard1_dg1_ctl00")
         position = url.split("pos=", 1)[1].split("&", 1)[0].upper()
@@ -105,11 +105,12 @@ def generate_batters(urls):
     return batters
 
 
+
 # scrape each Fangraphs page and create a pitcher object for each row
 def generate_pitchers(urls):
     pitchers = []
     for url in urls:
-        req = requests.get(url)
+        req = requests.get(url, timeout=60)
         soup = BeautifulSoup(req.content, 'html5lib')
         table = soup.find(id="LeaderBoard1_dg1_ctl00")
         position = url.split("stats=", 1)[1].split("&", 1)[0].upper()
@@ -150,6 +151,7 @@ def generate_pitchers(urls):
     return pitchers
 
 
+
 # display each player's description
 def display_players(players):
     for player in players:
@@ -179,6 +181,12 @@ def loading():
     except ValueError:
         return redirect("/")
     return (render_template("loading.html", template_form=years_form, year1=year1, year2=year2))
+
+
+@app.route("/timeout", methods=["GET","POST"])
+def timeout():
+    years_form = Years_Form(crsf_enabled=False)
+    return(render_template("timeout.html", template_form=years_form))
 
 
 @app.route("/considerations", methods=["GET","POST"])
@@ -214,8 +222,18 @@ def considerations():
         f'https://www.fangraphs.com/leaders.aspx?pos=rf&stats=bat&lg=all&qual=y&type=c,58,23,37,38,7,12,11,13,21,6,203,199&season={year2}&month=0&season1={year1}&ind=0&team=0&rost=0&age=0&filter=&players=0&startdate={year1}-01-01&enddate={year2}-12-31&page=1_3&sort=3,d',
         f'https://www.fangraphs.com/leaders.aspx?pos=dh&stats=bat&lg=all&qual=y&type=c,58,23,37,38,7,12,11,13,21,6,203,199&season={year2}&month=0&season1={year1}&ind=0&team=0&rost=0&age=0&filter=&players=0&startdate={year1}-01-01&enddate={year2}-12-31&page=1_2&sort=3,d'
     ]
-    pitchers = generate_pitchers(pitcher_urls)
-    batters = generate_batters(batter_urls)
+    try:
+        pitchers = generate_pitchers(pitcher_urls)
+    except requests.exceptions.ReadTimeout:
+        return redirect("/timeout")
+    except requests.exceptions.ConnectTimeout:
+        return redirect("/timeout")
+    try:
+        batters = generate_batters(batter_urls)
+    except requests.exceptions.ReadTimeout:
+        return redirect("/timeout")
+    except requests.exceptions.ConnectTimeout:
+        return redirect("/timeout")
     return(render_template("considerations.html", year_start = year1, year_ending = year2, pitchers=pitchers, batters=batters))
 
 
