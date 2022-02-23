@@ -99,6 +99,8 @@ def generate_batters(urls):
                     batter.dwar = raw_column.split(">", 1)[1]
                 col_num += 1
             batter.position = position
+            positions = {"C":2, "1B":3, "2B":4, "3B":5, "SS":6, "LF":7, "CF":8, "RF":9, "DH":10}
+            batter.pos = positions[batter.position]
             batter.description = f"{batter.position} {batter.name} ({batter.war} WAR) - {batter.avg}/{batter.obp}/{batter.slg}, {batter.runs} R, {batter.hits} H, {batter.homeruns} HR, {batter.rbi} RBI, {batter.steals} SB"
             if batter.name != "":
                 batters.append(batter)
@@ -145,17 +147,67 @@ def generate_pitchers(urls):
                     pitcher.innings = raw_column.split(">", 1)[1]
                 col_num += 1
             pitcher.position = position
+            if pitcher.position == "SP":
+                pitcher.pos = 1
+            if pitcher.position == "RP":
+                pitcher.pos = 1.1
             pitcher.description = f"{position} {pitcher.name} ({pitcher.war} WAR) - {pitcher.era} ERA, {pitcher.whip} WHIP, {pitcher.wins} W, {pitcher.saves} SV, {pitcher.strikeouts} K"
             if pitcher.name != "":
                 pitchers.append(pitcher)
     return pitchers
 
 
+def select_top_batters(batters):
+    final_batters = [batters.pop(21),batters.pop(18),batters.pop(15),batters.pop(12),batters.pop(9),batters.pop(6),batters.pop(3),batters.pop(1),batters.pop(0)]
+    batters.sort(key=lambda x:-float(x.war))
+    reserves = 0
+    backup_infielder = False
+    backup_outfielder = False
+    designated_hitter = False
+    flex_reserves = 2
+    while reserves < 4:
+        player = batters.pop(0)
+        if (player.position == "C" or player.position == "1B") and flex_reserves > 0:
+            final_batters.append(player)
+            flex_reserves -= 1
+            reserves += 1
+        if player.position == "2B" or player.position == "3B" or player.position == "SS":
+            if backup_infielder is False:
+                final_batters.append(player)
+                backup_infielder = True
+                reserves += 1
+            elif backup_infielder is True and flex_reserves > 0:
+                final_batters.append(player)
+                flex_reserves -= 1
+                reserves += 1
+        if player.position == "LF" or player.position == "CF" or player.position == "RF":
+            if backup_outfielder is False:
+                final_batters.append(player)
+                backup_outfielder = True
+                reserves += 1
+            elif backup_outfielder is True and flex_reserves > 0:
+                final_batters.append(player)
+                flex_reserves -= 1
+                reserves += 1
+        if player.position == "DH" and designated_hitter is False and flex_reserves > 0:
+            final_batters.append(player)
+            designated_hitter = True
+            flex_reserves -= 1
+            reserves += 1
+    final_batters.sort(key=lambda x: (x.pos, -float(x.war)))
+    return final_batters
 
-# display each player's description
-def display_players(players):
-    for player in players:
-        print(player.description)
+
+def select_top_pitchers(pitchers):
+    final_pitchers = [pitchers.pop(11),pitchers.pop(10),pitchers.pop(9),pitchers.pop(4),pitchers.pop(3),pitchers.pop(2),pitchers.pop(1),pitchers.pop(0)]
+    pitchers.sort(key=lambda x: -float(x.war))
+    final_pitchers.append(pitchers.pop(3))
+    final_pitchers.append(pitchers.pop(2))
+    final_pitchers.append(pitchers.pop(1))
+    final_pitchers.append(pitchers.pop(0))
+    final_pitchers.sort(key=lambda x: (x.pos, -float(x.war)))
+    return final_pitchers
+
 
 @app.route("/index", methods=["GET","POST"])
 @app.route("/", methods=["GET","POST"])
@@ -189,8 +241,8 @@ def timeout():
     return(render_template("timeout.html", template_form=years_form))
 
 
-@app.route("/considerations", methods=["GET","POST"])
-def considerations():
+@app.route("/roster", methods=["GET","POST"])
+def roster():
     years_form = Years_Form(crsf_enabled=False)
     year1 = years_form.year_a.data
     year2 = years_form.year_b.data
@@ -234,7 +286,9 @@ def considerations():
         return redirect("/timeout")
     except requests.exceptions.ConnectTimeout:
         return redirect("/timeout")
-    return(render_template("considerations.html", year_start = year1, year_ending = year2, pitchers=pitchers, batters=batters))
+    final_pitchers = select_top_pitchers(pitchers)
+    final_batters = select_top_batters(batters)
+    return(render_template("roster.html", year_start = year1, year_ending = year2, pitchers=final_pitchers, batters=final_batters))
 
 
 if __name__ == "__main__":
