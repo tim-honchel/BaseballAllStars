@@ -20,7 +20,7 @@
     <br>
     <p><b>Position Players:</b></p>
     {% for batter in batters %}
-    <p style="line-height:0%">{{batter.description}}</p>
+    <p style="line-height:0%">#{{batter.rank}}, pos:{{batter.pos}}, {{batter.description}}</p>
     {% endfor %}
     <br>
     <a href="/">Generate a new search</a>

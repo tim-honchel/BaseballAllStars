@@ -68,6 +68,7 @@ def generate_batters(urls):
             raw_row_split = raw_row.split("</td>")
             col_num = 0
             batter = Batter()
+            batter.rank = row_num + 1
             for raw_column in raw_row_split:
                 if col_num == 0 or col_num == 2 or col_num == 15:
                     0
@@ -101,6 +102,7 @@ def generate_batters(urls):
             batter.position = position
             positions = {"C":2, "1B":3, "2B":4, "3B":5, "SS":6, "LF":7, "CF":8, "RF":9, "DH":10}
             batter.pos = positions[batter.position]
+            batter.pos_sort = batter.pos
             batter.description = f"{batter.position} {batter.name} ({batter.war} WAR) - {batter.avg}/{batter.obp}/{batter.slg}, {batter.runs} R, {batter.hits} H, {batter.homeruns} HR, {batter.rbi} RBI, {batter.steals} SB"
             if batter.name != "":
                 batters.append(batter)
@@ -157,9 +159,64 @@ def generate_pitchers(urls):
     return pitchers
 
 
+def check_for_duplicates(batters):
+    for batter1 in batters:
+        for batter2 in batters:
+            if batter1.name == batter2.name and batter1.position != batter2.position:
+                batter1 = choose_which_duplicate_to_keep(batter1, batter2, batters)
+                batters.remove(batter2)
+    return batters
+
+
+def choose_which_duplicate_to_keep(batter1, batter2, batters):
+    batter1.position = f"{batter1.position}/{batter2.position}"
+    batter1.description = f"{batter1.position} {batter1.name} ({batter1.war} WAR) - {batter1.avg}/{batter1.obp}/{batter1.slg}, {batter1.runs} R, {batter1.hits} H, {batter1.homeruns} HR, {batter1.rbi} RBI, {batter1.steals} SB"
+    if batter2.rank == 1 and batter1.rank > 1 and batter2.pos != 10:
+        batter1.pos = batter2.pos
+        batter1.rank = batter2.rank
+    elif batter2.rank == 1 and batter1.rank == 1 and batter2.pos != 10:
+        next_best_position1 = [player.war for player in batters if player.pos == batter1.pos and player.rank == 2]
+        next_best_position2 = [player.war for player in batters if player.pos == batter2.pos and player.rank == 2]
+        if next_best_position1 >= next_best_position2:
+            batter1.pos = batter2.pos
+            batter1.rank = batter2.rank
+    elif batter2.pos == 2 and batter2.rank == 2 and batter1.rank != 1:
+        batter1.pos = batter2.pos
+        batter1.rank = batter2.rank
+    elif batter1.pos == 10:
+        batter1.pos = batter2.pos
+        batter1.rank = batter2.rank
+    elif batter1.pos == 3 and batter2.pos != 10:
+        batter1.pos = batter2.pos
+        batter1.rank = batter2.rank
+    return batter1
+
+
 def select_top_batters(batters):
-    final_batters = [batters.pop(21),batters.pop(18),batters.pop(15),batters.pop(12),batters.pop(9),batters.pop(6),batters.pop(3),batters.pop(1),batters.pop(0)]
-    batters.sort(key=lambda x:-float(x.war))
+    final_batters = []
+    position_count = {2:0, 3:0, 4:0, 5:0, 6:0, 7:0, 8:0, 9:0}
+    for batter in batters:
+        if (batter.rank == 1 and batter.pos != 10):
+            final_batters.append(batter)
+            position_count[batter.pos] = 1
+            batters.remove(batter)
+    batters.sort(key=lambda x: -float(x.war))
+    while len(final_batters) < 8:
+        for pos, count in position_count.items():
+            if count == 0:
+                search_pos = pos
+        cont = True
+        for batter in batters:
+            if batter.pos == search_pos and cont is True:
+                final_batters.append(batter)
+                position_count[batter.pos] = 1
+                batters.remove(batter)
+                cont = False
+    for batter in batters:
+        if batter.rank == 2 and batter.pos == 2:
+            final_batters.append(batter)
+            batters.remove(batter)
+    #final_batters = [batters.pop(21),batters.pop(18),batters.pop(15),batters.pop(12),batters.pop(9),batters.pop(6),batters.pop(3),batters.pop(1),batters.pop(0)]
     reserves = 0
     backup_infielder = False
     backup_outfielder = False
@@ -167,11 +224,11 @@ def select_top_batters(batters):
     flex_reserves = 2
     while reserves < 4:
         player = batters.pop(0)
-        if (player.position == "C" or player.position == "1B") and flex_reserves > 0:
+        if (player.pos == 2 or player.pos == 3) and flex_reserves > 0:
             final_batters.append(player)
             flex_reserves -= 1
             reserves += 1
-        if player.position == "2B" or player.position == "3B" or player.position == "SS":
+        if player.pos == 4 or player.pos == 5 or player.pos == 6:
             if backup_infielder is False:
                 final_batters.append(player)
                 backup_infielder = True
@@ -180,7 +237,7 @@ def select_top_batters(batters):
                 final_batters.append(player)
                 flex_reserves -= 1
                 reserves += 1
-        if player.position == "LF" or player.position == "CF" or player.position == "RF":
+        if player.pos == 7 or player.pos == 8 or player.pos == 9:
             if backup_outfielder is False:
                 final_batters.append(player)
                 backup_outfielder = True
@@ -189,12 +246,12 @@ def select_top_batters(batters):
                 final_batters.append(player)
                 flex_reserves -= 1
                 reserves += 1
-        if player.position == "DH" and designated_hitter is False and flex_reserves > 0:
+        if player.pos == 10 and designated_hitter is False and flex_reserves > 0:
             final_batters.append(player)
             designated_hitter = True
             flex_reserves -= 1
             reserves += 1
-    final_batters.sort(key=lambda x: (x.pos, -float(x.war)))
+    final_batters.sort(key=lambda x: (x.pos_sort, -float(x.war)))
     return final_batters
 
 
@@ -238,7 +295,7 @@ def loading():
 @app.route("/timeout", methods=["GET","POST"])
 def timeout():
     years_form = Years_Form(crsf_enabled=False)
-    return(render_template("timeout.html", template_form=years_form))
+    return (render_template("timeout.html", template_form=years_form))
 
 
 @app.route("/roster", methods=["GET","POST"])
@@ -286,9 +343,11 @@ def roster():
         return redirect("/timeout")
     except requests.exceptions.ConnectTimeout:
         return redirect("/timeout")
+    batters = check_for_duplicates(batters)
     final_pitchers = select_top_pitchers(pitchers)
     final_batters = select_top_batters(batters)
-    return(render_template("roster.html", year_start = year1, year_ending = year2, pitchers=final_pitchers, batters=final_batters))
+    #return (render_template("considerations.html", year_start=year1, year_ending=year2, pitchers=pitchers, batters=batters))
+    return (render_template("roster.html", year_start = year1, year_ending = year2, pitchers=final_pitchers, batters=final_batters))
 
 
 if __name__ == "__main__":
