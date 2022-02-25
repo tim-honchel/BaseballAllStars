@@ -12,18 +12,23 @@
   <body>
     <h1>All-Star Team</h1>
     <p>For the time period {{year_start}} - {{year_ending}}, here is a roster of the top 12 pitchers and 13 position players:</p>
-    <br>
     <p><b>Pitchers:</b></p>
     {% for pitcher in pitchers %}
     <p style="line-height:0%">{{pitcher.description}}</p>
     {% endfor %}
-    <br>
     <p><b>Position Players:</b></p>
     {% for batter in batters %}
     <p style="line-height:0%">{{batter.description}}</p>
     {% endfor %}
+    <p><b>Honorable Mentions:</b></p>
+    <p>
+    {% for player in honorable_mentions %}
+    <span>{{player.position}} {{player.name}}, </span>
+    {% endfor %}
+    </p>
     <br>
     <a href="/">Generate a new search</a>
+    <br>
     <br>
     <p>Created by <a href ="http://tim-honchel.github.io" target="_blank">Tim Honchel</a>. 2022. All statistics from FanGraphs.</p>
   </body>

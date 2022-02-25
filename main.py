@@ -100,7 +100,7 @@ def generate_batters(req, position):
         positions = {"C":2, "1B":3, "2B":4, "3B":5, "SS":6, "LF":7, "CF":8, "RF":9, "DH":10}
         batter.pos = positions[batter.position]  # assigns numerical position
         batter.pos_sort = batter.pos
-        batter.description = f"{batter.position} {batter.name} ({batter.war} WAR) - {batter.avg}/{batter.obp}/{batter.slg}, {batter.runs} R, {batter.hits} H, {batter.homeruns} HR, {batter.rbi} RBI, {batter.steals} SB"
+        batter.description = f"{batter.position} {batter.name} ({batter.war} WAR) - {batter.avg}/{batter.obp}/{batter.slg}, {batter.runs} R, {batter.hits} H, {batter.homeruns} HR, {batter.rbi} RBI, {batter.steals} SB, {round(float(batter.dwar)/10,1)} defWAR"
         if batter.name != "":
             batters.append(batter)  # adds current batter to list of batters
     return batters
@@ -161,7 +161,7 @@ def check_for_duplicates(batters):
 # when there is a duplicate, determines a primary position that will best serve the team
 def choose_which_duplicate_to_keep(batter1, batter2, batters):
     batter1.position = f"{batter1.position}/{batter2.position}"  # to indicate they play multiple positions
-    batter1.description = f"{batter1.position} {batter1.name} ({batter1.war} WAR) - {batter1.avg}/{batter1.obp}/{batter1.slg}, {batter1.runs} R, {batter1.hits} H, {batter1.homeruns} HR, {batter1.rbi} RBI, {batter1.steals} SB"
+    batter1.description = f"{batter1.position} {batter1.name} ({batter1.war} WAR) - {batter1.avg}/{batter1.obp}/{batter1.slg}, {batter1.runs} R, {batter1.hits} H, {batter1.homeruns} HR, {batter1.rbi} RBI, {batter1.steals} SB, {round(float(batter1.dwar)/10,1)} defWAR"
     if batter2.rank == 1 and batter1.rank > 1 and batter2.pos != 10:
         batter1.pos = batter2.pos  # if they are the #1 ranked player at a position other than DH, they take that position
         batter1.rank = batter2.rank
@@ -256,6 +256,14 @@ def select_top_pitchers(pitchers):
     final_pitchers.append(pitchers.pop(0))
     final_pitchers.sort(key=lambda x: (x.pos, -float(x.war)))  # sorts All Stars by WAR, descending
     return final_pitchers
+
+
+def generate_mentions(all_players, final_batters, final_pitchers):
+    for batter in final_batters:
+        all_players.remove(batter)
+    for pitcher in final_pitchers:
+        all_players.remove(pitcher)
+    return all_players
 
 
 # asynchronously request the HTML of 11 Fangraphs web pages, 1 for each position
@@ -361,9 +369,11 @@ def roster():
     batters = prep_batters(html_c, html_1b, html_2b, html_3b, html_ss, html_lf, html_cf, html_rf, html_dh)  # parses HTML into batters
     pitchers = prep_pitchers(html_sp, html_rp)  # parses HTML into pitchers
     batters_unduplicated = check_for_duplicates(batters)  # consolidates players who appeared at multiple positions
+    all_players = pitchers + batters_unduplicated
     final_pitchers = select_top_pitchers(pitchers)  # selects the top 12 pitchers
     final_batters = select_top_batters(batters_unduplicated)  # selects the top 13 batters
-    return (render_template("roster.html", year_start = year1, year_ending = year2, pitchers=final_pitchers, batters=final_batters))
+    honorable_mentions = generate_mentions(all_players, final_batters, final_pitchers)
+    return (render_template("roster.html", year_start = year1, year_ending = year2, pitchers=final_pitchers, batters=final_batters, honorable_mentions = honorable_mentions))
 
 
 # the page that displays if there is a timeout error
