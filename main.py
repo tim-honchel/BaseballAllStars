@@ -23,6 +23,7 @@ class Pitcher:
     saves = 0
     strikeouts = 0
     innings = 0
+    rank = 0
 
 
 # each batter will be an object with statistical member fields
@@ -42,18 +43,19 @@ class Batter:
     steals = 0
     plate_appearances = 0
     dwar = 0  # contribution to WAR from defense
+    rank = 0
 
 
 # form to input time period
 class Years_Form(FlaskForm):
     year_a = StringField("Enter the starting year of the time period: ")
     year_b = StringField("Enter the ending year of the time period: ")
-    team_or_league = SelectField("Choose the league or team:", choices=[('in baseball', 'All teams'), ('in the American League', 'American League'), ('in the National League', 'National League')])
+    team_or_league = SelectField("Choose the league or team:", choices=[('in baseball', 'All teams'), ('in the American League', 'American League'), ('in the National League', 'National League'), ("for the Arizona Diamondbacks", "Arizona Diamondbacks"), ("for the Atlanta Braves", "Atlanta Braves"), ('for the Baltimore Orioles', 'Baltimore Orioles'), ("for the Boston Red Sox", "Boston Red Sox"), ("for the Chicago Cubs","Chicago Cubs"), ("for the Chicago White Sox", "Chicago White Sox"), ("for the Cincinnati Reds", "Cincinnati Reds"), ("for the Cleveland Guardians","Cleveland Guardians"), ("for the Colorado Rockies","Colorado Rockies"), ("for the Detroit Tigers","Detroit Tigers"), ("for the Houston Astros","Houston Astros"), ("for the Kansas City Royals","Kansas City Royals"), ("for the Los Angeles Angels","Los Angeles Angels"), ("for the Los Angeles Dodgers","Los Angeles Dodgers"), ("for the Miami Marlins","Miami Marlins"), ("for the Milwaukee Brewers","Milwaukee Brewers"), ("for the Minnesota Twins","Minnesota Twins"), ("for the New York Mets","New York Mets"), ("for the New York Yankees","New York Yankees"), ("for the Oakland Athletics","Oakland Athletics"), ("for the Philadelphia Philles","Philadelphia Philies"), ("for the Pittsburgh Pirates","Pittsburgh Pirates"), ("for the San Diego Padres","San Diego Padres"), ("for the San Francisco Giants","San Francisco Giants"), ("for the Seattle Mariners","Seattle Mariners"), ("for the St. Louis Cardinals","St. Louis Cardinals"), ("for the Tampa Bay Rays","Tampa By Rays"), ("for the Texas Rangers","Texas Rangers"), ("for the Toronto Blue Jays","Toronto Blue Jays"), ("for the Washington Nationals","Washington Nationals")])
     submit = SubmitField("Search this time period")
 
 
 # scrapes each Fangraphs page and creates 27 batter objects
-def generate_batters(req, position):
+def generate_batters(req, position, stat_adjustment):
     soup = BeautifulSoup(req.content, 'html5lib')  # stores HTML from website in a manipulable form
     table = soup.find(id="LeaderBoard1_dg1_ctl00")  # searches HTML for relevant section
     batters = []
@@ -65,31 +67,31 @@ def generate_batters(req, position):
         batter = Batter()  # creates new Batter object
         batter.rank = row_num + 1
         for raw_column in raw_row_split:  # iterates through each column
-            if col_num == 0 or col_num == 2 or col_num == 13 or col_num == 15:  # ignores irrelevant columns
+            if col_num == 0 or (col_num == 2 and stat_adjustment == 0) or col_num + stat_adjustment == 13 or col_num + stat_adjustment == 15:  # ignores irrelevant columns
                 0
             if col_num == 1:
                 batter.name = raw_column.split(">", 1)[1].split(">", 1)[1].split("<", 1)[0]  # manipulates HTML into the desired string
-            if col_num == 3:
+            if col_num + stat_adjustment == 3:
                 batter.war = raw_column.split(">", 1)[1]
-            if col_num == 4:
+            if col_num  + stat_adjustment == 4:
                 batter.avg = raw_column.split(">", 1)[1]
-            if col_num == 5:
+            if col_num  + stat_adjustment == 5:
                 batter.obp = raw_column.split(">", 1)[1]
-            if col_num == 6:
+            if col_num  + stat_adjustment == 6:
                 batter.slg = raw_column.split(">", 1)[1]
-            if col_num == 7:
+            if col_num  + stat_adjustment == 7:
                 batter.hits = raw_column.split(">", 1)[1]
-            if col_num == 8:
+            if col_num  + stat_adjustment == 8:
                 batter.runs = raw_column.split(">", 1)[1]
-            if col_num == 9:
+            if col_num  + stat_adjustment == 9:
                 batter.homeruns = raw_column.split(">", 1)[1]
-            if col_num == 10:
+            if col_num  + stat_adjustment == 10:
                 batter.rbi = raw_column.split(">", 1)[1]
-            if col_num == 11:
+            if col_num  + stat_adjustment == 11:
                 batter.steals = raw_column.split(">", 1)[1]
-            if col_num == 12:
+            if col_num  + stat_adjustment == 12:
                 batter.plate_appearances = raw_column.split(">", 1)[1]
-            if col_num == 14:
+            if col_num  + stat_adjustment == 14:
                 batter.dwar = round(float(raw_column.split(">", 1)[1])/10,1)
             col_num += 1
         batter.position = position
@@ -102,7 +104,7 @@ def generate_batters(req, position):
 
 
 # scrapes each Fangraphs page and creates 16 pitcher objects (see similar comments in generate_batters function)
-def generate_pitchers(req, position):
+def generate_pitchers(req, position, stat_adjustment):
     pitchers = []
     soup = BeautifulSoup(req.content, 'html5lib')
     table = soup.find(id="LeaderBoard1_dg1_ctl00")
@@ -112,24 +114,25 @@ def generate_pitchers(req, position):
         raw_row_split = raw_row.split("</td>")
         col_num = 0
         pitcher = Pitcher()
+        pitcher.rank = row_num + 1
         for raw_column in raw_row_split:
-            if col_num == 0 or col_num == 2 or col_num == 10:
+            if col_num == 0 or (col_num == 2 and stat_adjustment == 0) or col_num == 10:
                 0
             if col_num == 1:
                 pitcher.name = raw_column.split(">", 1)[1].split(">", 1)[1].split("<", 1)[0]
-            if col_num == 3:
+            if col_num + stat_adjustment == 3:
                 pitcher.war = raw_column.split(">", 1)[1]
-            if col_num == 4:
+            if col_num + stat_adjustment == 4:
                 pitcher.era = raw_column.split(">", 1)[1]
-            if col_num == 5:
+            if col_num + stat_adjustment == 5:
                 pitcher.whip = raw_column.split(">", 1)[1]
-            if col_num == 6:
+            if col_num + stat_adjustment == 6:
                 pitcher.wins = raw_column.split(">", 1)[1]
-            if col_num == 7:
+            if col_num + stat_adjustment == 7:
                 pitcher.saves = raw_column.split(">", 1)[1]
-            if col_num == 8:
+            if col_num + stat_adjustment == 8:
                 pitcher.strikeouts = raw_column.split(">", 1)[1]
-            if col_num == 9:
+            if col_num + stat_adjustment == 9:
                 pitcher.innings = raw_column.split(">", 1)[1]
             col_num += 1
         pitcher.position = position
@@ -143,37 +146,39 @@ def generate_pitchers(req, position):
 
 
 # checks to see if a player was in the top 3 at multiple positions
-def check_for_duplicates(batters):
-    for batter1 in batters:
-        for batter2 in batters:
-            if batter1.name == batter2.name and batter1.position != batter2.position:
-                batter1 = choose_which_duplicate_to_keep(batter1, batter2, batters)
-                batters.remove(batter2)  # deletes the duplicate
-    return batters
+def check_for_duplicates(players):
+    for player1 in players:
+        for player2 in players:
+            if player1.name == player2.name and player1.position != player2.position:
+                player1 = choose_which_duplicate_to_keep(player1, player2, players)
+                players.remove(player2)  # deletes the duplicate
+    return players
 
 
 # when there is a duplicate, determines a primary position that will best serve the team
-def choose_which_duplicate_to_keep(batter1, batter2, batters):
-    batter1.position = f"{batter1.position}/{batter2.position}"  # to indicate they play multiple positions
-    if batter2.rank == 1 and batter1.rank > 1 and batter2.pos != 10:
-        batter1.pos = batter2.pos  # if they are the #1 ranked player at a position other than DH, they take that position
-        batter1.rank = batter2.rank
-    elif batter2.rank == 1 and batter1.rank == 1 and batter2.pos != 10:  # if they are ranked #1 at two positions...
-        next_best_position1 = [player.war for player in batters if player.pos == batter1.pos and player.rank == 2]
-        next_best_position2 = [player.war for player in batters if player.pos == batter2.pos and player.rank == 2]
+def choose_which_duplicate_to_keep(player1, player2, players):
+    player1.position = f"{player1.position}/{player2.position}"  # to indicate they play multiple positions
+    if player2.rank == 1 and player1.rank > 1 and player1.pos >= 2 and player2.pos != 10:
+        player1.pos = player2.pos  # if they are the #1 ranked player at a position other than DH, they take that position
+        player1.rank = player2.rank
+    elif player2.rank == 1 and player1.rank == 1 and player1.pos >= 2 and player2.pos != 10:  # if they are ranked #1 at two positions...
+        next_best_position1 = [player.war for player in players if player.pos == player1.pos and player.rank == 2]
+        next_best_position2 = [player.war for player in players if player.pos == player2.pos and player.rank == 2]
         if next_best_position1 >= next_best_position2:  # compare the #2 ranked players at those positions
-            batter1.pos = batter2.pos  # whichever #2 is weaker, that will be the player's primary position
-            batter1.rank = batter2.rank
-    elif batter2.pos == 2 and batter2.rank == 2 and batter1.rank != 1:  # if they are the #2 catcher, that takes priority
-        batter1.pos = batter2.pos
-        batter1.rank = batter2.rank
-    elif batter1.pos == 10:  # if they play DH, their other position takes priority
-        batter1.pos = batter2.pos
-        batter1.rank = batter2.rank
-    elif batter1.pos == 3 and batter2.pos != 10:  # if they play 1B, all other positions except DH take priority
-        batter1.pos = batter2.pos
-        batter1.rank = batter2.rank
-    return batter1
+            player1.pos = player2.pos  # whichever #2 is weaker, that will be the player's primary position
+            player1.rank = player2.rank
+    elif player2.pos == 2 and player2.rank == 2 and player1.rank != 1:  # if they are the #2 catcher, that takes priority
+        player1.pos = player2.pos
+        player1.rank = player2.rank
+    elif player1.pos == 10:  # if they play DH, their other position takes priority
+        player1.pos = player2.pos
+        player1.rank = player2.rank
+    elif player1.pos == 3 and player2.pos != 10:  # if they play 1B, all other positions except DH take priority
+        player1.pos = player2.pos
+        player1.rank = player2.rank
+    elif player2.pos == 1.1:
+        player1.pos = player2.pos
+    return player1
 
 
 # chooses 13 of the 27 batters to make the All Star team
@@ -260,18 +265,18 @@ def generate_mentions(all_players, final_batters, final_pitchers):
 
 
 # asynchronously request the HTML of 11 Fangraphs web pages, 1 for each position
-async def request_pages(year1, year2, league, team):
-    url_sp = f'https://www.fangraphs.com/leaders.aspx?pos=all&stats=pit&lg={league}&qual=y&type=c,59,6,42,4,11,24,13&season={year2}&month=0&season1={year1}&ind=0&team={team}&rost=0&age=0&filter=&players=0&startdate={year1}-01-01&enddate={year2}-12-31&page=1_9&sort=3,d'
-    url_rp = f'https://www.fangraphs.com/leaders.aspx?pos=all&stats=rel&lg={league}&qual=y&type=c,59,6,42,4,11,24,13&season={year2}&month=0&season1={year1}&ind=0&team={team}&rost=0&age=0&filter=&players=0&startdate={year1}-01-01&enddate={year2}-12-31&page=1_7&sort=3,d'
-    url_c = f'https://www.fangraphs.com/leaders.aspx?pos=c&stats=bat&lg={league}&qual=y&type=c,58,23,37,38,7,12,11,13,21,6,203,199&season={year2}&month=0&season1={year1}&ind=0&team={team}&rost=0&age=0&filter=&players=0&startdate={year1}-01-01&enddate={year2}-12-31&page=1_3&sort=3,d'
-    url_1b = f'https://www.fangraphs.com/leaders.aspx?pos=1b&stats=bat&lg={league}&qual=y&type=c,58,23,37,38,7,12,11,13,21,6,203,199&season={year2}&month=0&season1={year1}&ind=0&team={team}&rost=0&age=0&filter=&players=0&startdate={year1}-01-01&enddate={year2}-12-31&page=1_3&sort=3,d'
-    url_2b = f'https://www.fangraphs.com/leaders.aspx?pos=2b&stats=bat&lg={league}&qual=y&type=c,58,23,37,38,7,12,11,13,21,6,203,199&season={year2}&month=0&season1={year1}&ind=0&team={team}&rost=0&age=0&filter=&players=0&startdate={year1}-01-01&enddate={year2}-12-31&page=1_3&sort=3,d'
-    url_3b = f'https://www.fangraphs.com/leaders.aspx?pos=3b&stats=bat&lg={league}&qual=y&type=c,58,23,37,38,7,12,11,13,21,6,203,199&season={year2}&month=0&season1={year1}&ind=0&team={team}&rost=0&age=0&filter=&players=0&startdate={year1}-01-01&enddate={year2}-12-31&page=1_3&sort=3,d'
-    url_ss = f'https://www.fangraphs.com/leaders.aspx?pos=ss&stats=bat&lg={league}&qual=y&type=c,58,23,37,38,7,12,11,13,21,6,203,199&season={year2}&month=0&season1={year1}&ind=0&team={team}&rost=0&age=0&filter=&players=0&startdate={year1}-01-01&enddate={year2}-12-31&page=1_3&sort=3,d'
-    url_lf = f'https://www.fangraphs.com/leaders.aspx?pos=lf&stats=bat&lg={league}&qual=y&type=c,58,23,37,38,7,12,11,13,21,6,203,199&season={year2}&month=0&season1={year1}&ind=0&team={team}&rost=0&age=0&filter=&players=0&startdate={year1}-01-01&enddate={year2}-12-31&page=1_3&sort=3,d'
-    url_cf = f'https://www.fangraphs.com/leaders.aspx?pos=cf&stats=bat&lg={league}&qual=y&type=c,58,23,37,38,7,12,11,13,21,6,203,199&season={year2}&month=0&season1={year1}&ind=0&team={team}&rost=0&age=0&filter=&players=0&startdate={year1}-01-01&enddate={year2}-12-31&page=1_3&sort=3,d'
-    url_rf = f'https://www.fangraphs.com/leaders.aspx?pos=rf&stats=bat&lg={league}&qual=y&type=c,58,23,37,38,7,12,11,13,21,6,203,199&season={year2}&month=0&season1={year1}&ind=0&team={team}&rost=0&age=0&filter=&players=0&startdate={year1}-01-01&enddate={year2}-12-31&page=1_3&sort=3,d'
-    url_dh = f'https://www.fangraphs.com/leaders.aspx?pos=dh&stats=bat&lg={league}&qual=y&type=c,58,23,37,38,7,12,11,13,21,6,203,199&season={year2}&month=0&season1={year1}&ind=0&team={team}&rost=0&age=0&filter=&players=0&startdate={year1}-01-01&enddate={year2}-12-31&page=1_2&sort=3,d'
+async def request_pages(year1, year2, league, team, stat_adjustment):
+    url_sp = f'https://www.fangraphs.com/leaders.aspx?pos=all&stats=pit&lg={league}&qual=0&type=c,59,6,42,4,11,24,13&season={year2}&month=0&season1={year1}&ind=0&team={team}&rost=0&age=0&filter=&players=0&startdate={year1}-01-01&enddate={year2}-12-31&page=1_9&sort={3-stat_adjustment},d'
+    url_rp = f'https://www.fangraphs.com/leaders.aspx?pos=all&stats=rel&lg={league}&qual=0&type=c,59,6,42,4,11,24,13&season={year2}&month=0&season1={year1}&ind=0&team={team}&rost=0&age=0&filter=&players=0&startdate={year1}-01-01&enddate={year2}-12-31&page=1_7&sort={3-stat_adjustment},d'
+    url_c = f'https://www.fangraphs.com/leaders.aspx?pos=c&stats=bat&lg={league}&qual=0&type=c,58,23,37,38,7,12,11,13,21,6,203,199&season={year2}&month=0&season1={year1}&ind=0&team={team}&rost=0&age=0&filter=&players=0&startdate={year1}-01-01&enddate={year2}-12-31&page=1_3&sort={3-stat_adjustment},d'
+    url_1b = f'https://www.fangraphs.com/leaders.aspx?pos=1b&stats=bat&lg={league}&qual=0&type=c,58,23,37,38,7,12,11,13,21,6,203,199&season={year2}&month=0&season1={year1}&ind=0&team={team}&rost=0&age=0&filter=&players=0&startdate={year1}-01-01&enddate={year2}-12-31&page=1_3&sort={3-stat_adjustment},d'
+    url_2b = f'https://www.fangraphs.com/leaders.aspx?pos=2b&stats=bat&lg={league}&qual=0&type=c,58,23,37,38,7,12,11,13,21,6,203,199&season={year2}&month=0&season1={year1}&ind=0&team={team}&rost=0&age=0&filter=&players=0&startdate={year1}-01-01&enddate={year2}-12-31&page=1_3&sort={3-stat_adjustment},d'
+    url_3b = f'https://www.fangraphs.com/leaders.aspx?pos=3b&stats=bat&lg={league}&qual=0&type=c,58,23,37,38,7,12,11,13,21,6,203,199&season={year2}&month=0&season1={year1}&ind=0&team={team}&rost=0&age=0&filter=&players=0&startdate={year1}-01-01&enddate={year2}-12-31&page=1_3&sort={3-stat_adjustment},d'
+    url_ss = f'https://www.fangraphs.com/leaders.aspx?pos=ss&stats=bat&lg={league}&qual=0&type=c,58,23,37,38,7,12,11,13,21,6,203,199&season={year2}&month=0&season1={year1}&ind=0&team={team}&rost=0&age=0&filter=&players=0&startdate={year1}-01-01&enddate={year2}-12-31&page=1_3&sort={3-stat_adjustment},d'
+    url_lf = f'https://www.fangraphs.com/leaders.aspx?pos=lf&stats=bat&lg={league}&qual=0&type=c,58,23,37,38,7,12,11,13,21,6,203,199&season={year2}&month=0&season1={year1}&ind=0&team={team}&rost=0&age=0&filter=&players=0&startdate={year1}-01-01&enddate={year2}-12-31&page=1_3&sort={3-stat_adjustment},d'
+    url_cf = f'https://www.fangraphs.com/leaders.aspx?pos=cf&stats=bat&lg={league}&qual=0&type=c,58,23,37,38,7,12,11,13,21,6,203,199&season={year2}&month=0&season1={year1}&ind=0&team={team}&rost=0&age=0&filter=&players=0&startdate={year1}-01-01&enddate={year2}-12-31&page=1_3&sort={3-stat_adjustment},d'
+    url_rf = f'https://www.fangraphs.com/leaders.aspx?pos=rf&stats=bat&lg={league}&qual=0&type=c,58,23,37,38,7,12,11,13,21,6,203,199&season={year2}&month=0&season1={year1}&ind=0&team={team}&rost=0&age=0&filter=&players=0&startdate={year1}-01-01&enddate={year2}-12-31&page=1_3&sort={3-stat_adjustment},d'
+    url_dh = f'https://www.fangraphs.com/leaders.aspx?pos=dh&stats=bat&lg={league}&qual=0&type=c,58,23,37,38,7,12,11,13,21,6,203,199&season={year2}&month=0&season1={year1}&ind=0&team={team}&rost=0&age=0&filter=&players=0&startdate={year1}-01-01&enddate={year2}-12-31&page=1_2&sort={3-stat_adjustment},d'
     loop = asyncio.get_event_loop()  # initiates a loop where tasks can be completed asynchronously
     future_sp = loop.run_in_executor(None, requests.get, url_sp)  # opens one of the Fangraphs pages
     future_rp = loop.run_in_executor(None, requests.get, url_rp)
@@ -299,24 +304,24 @@ async def request_pages(year1, year2, league, team):
 
 
 # assembles the batter list by sending saved HTML through generate_batters function
-def prep_batters(html_c, html_1b, html_2b, html_3b, html_ss, html_lf, html_cf, html_rf, html_dh):
-    catchers = generate_batters(html_c, "C")
-    first_basemen = generate_batters(html_1b, "1B")
-    second_basemen = generate_batters(html_2b, "2B")
-    third_basemen = generate_batters(html_3b, "3B")
-    shortstops = generate_batters(html_ss, "SS")
-    left_fielders = generate_batters(html_lf, "LF")
-    center_fielders = generate_batters(html_cf, "CF")
-    right_fielders = generate_batters(html_rf, "RF")
-    designated_hitters = generate_batters(html_dh, "DH")
+def prep_batters(stat_adjustment, html_c, html_1b, html_2b, html_3b, html_ss, html_lf, html_cf, html_rf, html_dh):
+    catchers = generate_batters(html_c, "C", stat_adjustment)
+    first_basemen = generate_batters(html_1b, "1B", stat_adjustment)
+    second_basemen = generate_batters(html_2b, "2B", stat_adjustment)
+    third_basemen = generate_batters(html_3b, "3B", stat_adjustment)
+    shortstops = generate_batters(html_ss, "SS", stat_adjustment)
+    left_fielders = generate_batters(html_lf, "LF", stat_adjustment)
+    center_fielders = generate_batters(html_cf, "CF", stat_adjustment)
+    right_fielders = generate_batters(html_rf, "RF", stat_adjustment)
+    designated_hitters = generate_batters(html_dh, "DH", stat_adjustment)
     batters = catchers + first_basemen + second_basemen + third_basemen + shortstops + left_fielders + center_fielders + right_fielders + designated_hitters
     return batters
 
 
 # assembles the pitcher list by sending saved HTML through generate_pitchers function
-def prep_pitchers(html_sp, html_rp):
-    starters = generate_pitchers(html_sp, "SP")
-    relievers = generate_pitchers(html_rp, "RP")
+def prep_pitchers(stat_adjustment, html_sp, html_rp):
+    starters = generate_pitchers(html_sp, "SP", stat_adjustment)
+    relievers = generate_pitchers(html_rp, "RP", stat_adjustment)
     pitchers = starters + relievers
     return pitchers
 
@@ -360,18 +365,26 @@ def roster():
     team_or_league = years_form.team_or_league.data
     league = "all"
     team = "0"
-    if team_or_league == "in the American League":
+    stat_adjustment = 0
+    team_dictionary = {"for the Arizona Diamondbacks": "15", "for the Atlanta Braves": "16", "for the Baltimore Orioles": "2", "for the Boston Red Sox":"3", "for the Chicago Cubs":"17", "for the Chicago White Sox":"4", "for the Cincinnati Reds":"18", "for the Cleveland Guardians":"5", "for the Colorado Rockies":"19", "for the Detroit Tigers":"6", "for the Houston Astros":"21", "for the Kansas City Royals":"7", "for the Los Angeles Angels":"1", "for the Los Angeles Dodgers":"22", "for the Miami Marlins":"20", "for the Milwaukee Brewers":"23", "for the Minnesota Twins":"8", "for the New York Mets":"25", "for the New York Yankees":"9", "for the Oakland Athletics":"10", "for the Philadelphia Philles":"26", "for the Pittsburgh Pirates":"27", "for the San Diego Padres":"29", "for the Seattle Mariners":"11", "for the San Francisco Giants":"30", "for the St. Louis Cardinals":"28", "for the Tampa Bay Rays":"12", "for the Texas Rangers":"13", "for the Toronto Blue Jays":"14", "for the Washington Nationals":"24"}
+    if team_or_league == "in baseball":
+        league = "all"
+    elif team_or_league == "in the American League":
         league = "al"
     elif team_or_league == "in the National League":
         league = "nl"
+    else:
+        team = team_dictionary[team_or_league]
+        stat_adjustment = 1  #  there will be 1 less column in FanGraphs
     outer_loop = asyncio.new_event_loop()  # creates a new loop in order to run tasks asynchronously
     asyncio.set_event_loop(outer_loop)  # sets that loop in motion
-    html_sp, html_rp, html_c, html_1b, html_2b, html_3b, html_ss, html_lf, html_cf, html_rf, html_dh = outer_loop.run_until_complete(request_pages(year1, year2, league, team))  # calls request_pages function and waits until the loop is complete before returning values
-    batters = prep_batters(html_c, html_1b, html_2b, html_3b, html_ss, html_lf, html_cf, html_rf, html_dh)  # parses HTML into batters
-    pitchers = prep_pitchers(html_sp, html_rp)  # parses HTML into pitchers
+    html_sp, html_rp, html_c, html_1b, html_2b, html_3b, html_ss, html_lf, html_cf, html_rf, html_dh = outer_loop.run_until_complete(request_pages(year1, year2, league, team, stat_adjustment))  # calls request_pages function and waits until the loop is complete before returning values
+    batters = prep_batters(stat_adjustment, html_c, html_1b, html_2b, html_3b, html_ss, html_lf, html_cf, html_rf, html_dh)  # parses HTML into batters
+    pitchers = prep_pitchers(stat_adjustment, html_sp, html_rp)  # parses HTML into pitchers
     batters_unduplicated = check_for_duplicates(batters)  # consolidates players who appeared at multiple positions
-    all_players = pitchers + batters_unduplicated
-    final_pitchers = select_top_pitchers(pitchers)  # selects the top 12 pitchers
+    pitchers_unduplicated = check_for_duplicates(pitchers)
+    all_players = pitchers_unduplicated + batters_unduplicated
+    final_pitchers = select_top_pitchers(pitchers_unduplicated)  # selects the top 12 pitchers
     final_batters = select_top_batters(batters_unduplicated)  # selects the top 13 batters
     honorable_mentions = generate_mentions(all_players, final_batters, final_pitchers)
     return (render_template("roster.html", year_start = year1, year_ending = year2, team_or_league=team_or_league, pitchers=final_pitchers, batters=final_batters, honorable_mentions = honorable_mentions))
