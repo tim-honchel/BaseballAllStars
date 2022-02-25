@@ -11,16 +11,24 @@
   </head>
   <body>
     <h1>All-Star Team</h1>
-    <p>For the time period {{year_start}} - {{year_ending}}, here is a roster of the top 12 pitchers and 13 position players:</p>
-    <p><b>Pitchers:</b></p>
-    {% for pitcher in pitchers %}
-    <p style="line-height:0%">{{pitcher.description}}</p>
-    {% endfor %}
-    <p><b>Position Players:</b></p>
-    {% for batter in batters %}
-    <p style="line-height:0%">{{batter.description}}</p>
-    {% endfor %}
-    <p><b>Honorable Mentions:</b></p>
+    <p>For the time period {{year_start}} - {{year_ending}}, here is a roster of the top 12 pitchers and 13 position players {{team_or_league}}:</p>
+    <h3><u>Pitchers:</u></h3>
+    <table>
+      {% for pitcher in pitchers %}
+        <tr>
+          <td style="margin:0" style="padding:0">{{pitcher.position}} <b>{{pitcher.name}}</b> ({{pitcher.war}} WAR) - {{pitcher.era}} ERA, {{pitcher.whip}} WHIP, {{pitcher.wins}} W, {{pitcher.saves}} SV, {{pitcher.strikeouts}} K</td>
+        </tr>
+      {% endfor %}
+    </table>
+    <h3><u>Position Players:</u></h3>
+    <table>
+      {% for batter in batters %}
+        <tr>
+          <td style="margin:0" style="padding:0">{{batter.position}} <b>{{batter.name}}</b> ({{batter.war}} WAR) - {{batter.avg}}/{{batter.obp}}/{{batter.slg}}, {{batter.runs}} R, {{batter.hits}} H, {{batter.homeruns}} HR, {{batter.rbi}} RBI, {{batter.steals}} SB, {{batter.dwar}} defWAR</td>
+        </tr>
+      {% endfor %}
+    </table>
+    <h3><u>Honorable Mentions:</u></h3>
     <p>
     {% for player in honorable_mentions %}
     <span>{{player.position}} {{player.name}}, </span>

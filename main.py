@@ -1,6 +1,6 @@
 from flask import Flask, render_template, redirect  # framework
 from flask_wtf import FlaskForm  # for inputting years
-from wtforms import StringField, SubmitField
+from wtforms import StringField, SubmitField, SelectField
 import requests  # for getting HTML from websites
 import asyncio  # for asynchronous web requests
 from bs4 import BeautifulSoup  # for scraping HTML
@@ -23,7 +23,6 @@ class Pitcher:
     saves = 0
     strikeouts = 0
     innings = 0
-    description = ""  # will be used to display player's information
 
 
 # each batter will be an object with statistical member fields
@@ -42,15 +41,14 @@ class Batter:
     rbi = 0
     steals = 0
     plate_appearances = 0
-    owar = 0  # contribution from offense
-    dwar = 0  # contribution from defense
-    description = ""  # will be used later
+    dwar = 0  # contribution to WAR from defense
 
 
 # form to input time period
 class Years_Form(FlaskForm):
     year_a = StringField("Enter the starting year of the time period: ")
     year_b = StringField("Enter the ending year of the time period: ")
+    team_or_league = SelectField("Choose the league or team:", choices=[('in baseball', 'All teams'), ('in the American League', 'American League'), ('in the National League', 'National League')])
     submit = SubmitField("Search this time period")
 
 
@@ -67,7 +65,7 @@ def generate_batters(req, position):
         batter = Batter()  # creates new Batter object
         batter.rank = row_num + 1
         for raw_column in raw_row_split:  # iterates through each column
-            if col_num == 0 or col_num == 2 or col_num == 15:  # ignores irrelevant columns
+            if col_num == 0 or col_num == 2 or col_num == 13 or col_num == 15:  # ignores irrelevant columns
                 0
             if col_num == 1:
                 batter.name = raw_column.split(">", 1)[1].split(">", 1)[1].split("<", 1)[0]  # manipulates HTML into the desired string
@@ -91,16 +89,13 @@ def generate_batters(req, position):
                 batter.steals = raw_column.split(">", 1)[1]
             if col_num == 12:
                 batter.plate_appearances = raw_column.split(">", 1)[1]
-            if col_num == 13:
-                batter.owar = raw_column.split(">", 1)[1]
             if col_num == 14:
-                batter.dwar = raw_column.split(">", 1)[1]
+                batter.dwar = round(float(raw_column.split(">", 1)[1])/10,1)
             col_num += 1
         batter.position = position
         positions = {"C":2, "1B":3, "2B":4, "3B":5, "SS":6, "LF":7, "CF":8, "RF":9, "DH":10}
         batter.pos = positions[batter.position]  # assigns numerical position
         batter.pos_sort = batter.pos
-        batter.description = f"{batter.position} {batter.name} ({batter.war} WAR) - {batter.avg}/{batter.obp}/{batter.slg}, {batter.runs} R, {batter.hits} H, {batter.homeruns} HR, {batter.rbi} RBI, {batter.steals} SB, {round(float(batter.dwar)/10,1)} defWAR"
         if batter.name != "":
             batters.append(batter)  # adds current batter to list of batters
     return batters
@@ -142,7 +137,6 @@ def generate_pitchers(req, position):
             pitcher.pos = 1
         if pitcher.position == "RP":
             pitcher.pos = 1.1
-        pitcher.description = f"{position} {pitcher.name} ({pitcher.war} WAR) - {pitcher.era} ERA, {pitcher.whip} WHIP, {pitcher.wins} W, {pitcher.saves} SV, {pitcher.strikeouts} K"
         if pitcher.name != "":
             pitchers.append(pitcher)
     return pitchers
@@ -161,7 +155,6 @@ def check_for_duplicates(batters):
 # when there is a duplicate, determines a primary position that will best serve the team
 def choose_which_duplicate_to_keep(batter1, batter2, batters):
     batter1.position = f"{batter1.position}/{batter2.position}"  # to indicate they play multiple positions
-    batter1.description = f"{batter1.position} {batter1.name} ({batter1.war} WAR) - {batter1.avg}/{batter1.obp}/{batter1.slg}, {batter1.runs} R, {batter1.hits} H, {batter1.homeruns} HR, {batter1.rbi} RBI, {batter1.steals} SB, {round(float(batter1.dwar)/10,1)} defWAR"
     if batter2.rank == 1 and batter1.rank > 1 and batter2.pos != 10:
         batter1.pos = batter2.pos  # if they are the #1 ranked player at a position other than DH, they take that position
         batter1.rank = batter2.rank
@@ -267,18 +260,18 @@ def generate_mentions(all_players, final_batters, final_pitchers):
 
 
 # asynchronously request the HTML of 11 Fangraphs web pages, 1 for each position
-async def request_pages(year1, year2):
-    url_sp = f'https://www.fangraphs.com/leaders.aspx?pos=all&stats=pit&lg=all&qual=y&type=c,59,6,42,4,11,24,13&season={year2}&month=0&season1={year1}&ind=0&team=0&rost=0&age=0&filter=&players=0&startdate={year1}-01-01&enddate={year2}-12-31&page=1_9&sort=3,d'
-    url_rp = f'https://www.fangraphs.com/leaders.aspx?pos=all&stats=rel&lg=all&qual=y&type=c,59,6,42,4,11,24,13&season={year2}&month=0&season1={year1}&ind=0&team=0&rost=0&age=0&filter=&players=0&startdate={year1}-01-01&enddate={year2}-12-31&page=1_7&sort=3,d'
-    url_c = f'https://www.fangraphs.com/leaders.aspx?pos=c&stats=bat&lg=all&qual=y&type=c,58,23,37,38,7,12,11,13,21,6,203,199&season={year2}&month=0&season1={year1}&ind=0&team=0&rost=0&age=0&filter=&players=0&startdate={year1}-01-01&enddate={year2}-12-31&page=1_3&sort=3,d'
-    url_1b = f'https://www.fangraphs.com/leaders.aspx?pos=1b&stats=bat&lg=all&qual=y&type=c,58,23,37,38,7,12,11,13,21,6,203,199&season={year2}&month=0&season1={year1}&ind=0&team=0&rost=0&age=0&filter=&players=0&startdate={year1}-01-01&enddate={year2}-12-31&page=1_3&sort=3,d'
-    url_2b = f'https://www.fangraphs.com/leaders.aspx?pos=2b&stats=bat&lg=all&qual=y&type=c,58,23,37,38,7,12,11,13,21,6,203,199&season={year2}&month=0&season1={year1}&ind=0&team=0&rost=0&age=0&filter=&players=0&startdate={year1}-01-01&enddate={year2}-12-31&page=1_3&sort=3,d'
-    url_3b = f'https://www.fangraphs.com/leaders.aspx?pos=3b&stats=bat&lg=all&qual=y&type=c,58,23,37,38,7,12,11,13,21,6,203,199&season={year2}&month=0&season1={year1}&ind=0&team=0&rost=0&age=0&filter=&players=0&startdate={year1}-01-01&enddate={year2}-12-31&page=1_3&sort=3,d'
-    url_ss = f'https://www.fangraphs.com/leaders.aspx?pos=ss&stats=bat&lg=all&qual=y&type=c,58,23,37,38,7,12,11,13,21,6,203,199&season={year2}&month=0&season1={year1}&ind=0&team=0&rost=0&age=0&filter=&players=0&startdate={year1}-01-01&enddate={year2}-12-31&page=1_3&sort=3,d'
-    url_lf = f'https://www.fangraphs.com/leaders.aspx?pos=lf&stats=bat&lg=all&qual=y&type=c,58,23,37,38,7,12,11,13,21,6,203,199&season={year2}&month=0&season1={year1}&ind=0&team=0&rost=0&age=0&filter=&players=0&startdate={year1}-01-01&enddate={year2}-12-31&page=1_3&sort=3,d'
-    url_cf = f'https://www.fangraphs.com/leaders.aspx?pos=cf&stats=bat&lg=all&qual=y&type=c,58,23,37,38,7,12,11,13,21,6,203,199&season={year2}&month=0&season1={year1}&ind=0&team=0&rost=0&age=0&filter=&players=0&startdate={year1}-01-01&enddate={year2}-12-31&page=1_3&sort=3,d'
-    url_rf = f'https://www.fangraphs.com/leaders.aspx?pos=rf&stats=bat&lg=all&qual=y&type=c,58,23,37,38,7,12,11,13,21,6,203,199&season={year2}&month=0&season1={year1}&ind=0&team=0&rost=0&age=0&filter=&players=0&startdate={year1}-01-01&enddate={year2}-12-31&page=1_3&sort=3,d'
-    url_dh = f'https://www.fangraphs.com/leaders.aspx?pos=dh&stats=bat&lg=all&qual=y&type=c,58,23,37,38,7,12,11,13,21,6,203,199&season={year2}&month=0&season1={year1}&ind=0&team=0&rost=0&age=0&filter=&players=0&startdate={year1}-01-01&enddate={year2}-12-31&page=1_2&sort=3,d'
+async def request_pages(year1, year2, league, team):
+    url_sp = f'https://www.fangraphs.com/leaders.aspx?pos=all&stats=pit&lg={league}&qual=y&type=c,59,6,42,4,11,24,13&season={year2}&month=0&season1={year1}&ind=0&team={team}&rost=0&age=0&filter=&players=0&startdate={year1}-01-01&enddate={year2}-12-31&page=1_9&sort=3,d'
+    url_rp = f'https://www.fangraphs.com/leaders.aspx?pos=all&stats=rel&lg={league}&qual=y&type=c,59,6,42,4,11,24,13&season={year2}&month=0&season1={year1}&ind=0&team={team}&rost=0&age=0&filter=&players=0&startdate={year1}-01-01&enddate={year2}-12-31&page=1_7&sort=3,d'
+    url_c = f'https://www.fangraphs.com/leaders.aspx?pos=c&stats=bat&lg={league}&qual=y&type=c,58,23,37,38,7,12,11,13,21,6,203,199&season={year2}&month=0&season1={year1}&ind=0&team={team}&rost=0&age=0&filter=&players=0&startdate={year1}-01-01&enddate={year2}-12-31&page=1_3&sort=3,d'
+    url_1b = f'https://www.fangraphs.com/leaders.aspx?pos=1b&stats=bat&lg={league}&qual=y&type=c,58,23,37,38,7,12,11,13,21,6,203,199&season={year2}&month=0&season1={year1}&ind=0&team={team}&rost=0&age=0&filter=&players=0&startdate={year1}-01-01&enddate={year2}-12-31&page=1_3&sort=3,d'
+    url_2b = f'https://www.fangraphs.com/leaders.aspx?pos=2b&stats=bat&lg={league}&qual=y&type=c,58,23,37,38,7,12,11,13,21,6,203,199&season={year2}&month=0&season1={year1}&ind=0&team={team}&rost=0&age=0&filter=&players=0&startdate={year1}-01-01&enddate={year2}-12-31&page=1_3&sort=3,d'
+    url_3b = f'https://www.fangraphs.com/leaders.aspx?pos=3b&stats=bat&lg={league}&qual=y&type=c,58,23,37,38,7,12,11,13,21,6,203,199&season={year2}&month=0&season1={year1}&ind=0&team={team}&rost=0&age=0&filter=&players=0&startdate={year1}-01-01&enddate={year2}-12-31&page=1_3&sort=3,d'
+    url_ss = f'https://www.fangraphs.com/leaders.aspx?pos=ss&stats=bat&lg={league}&qual=y&type=c,58,23,37,38,7,12,11,13,21,6,203,199&season={year2}&month=0&season1={year1}&ind=0&team={team}&rost=0&age=0&filter=&players=0&startdate={year1}-01-01&enddate={year2}-12-31&page=1_3&sort=3,d'
+    url_lf = f'https://www.fangraphs.com/leaders.aspx?pos=lf&stats=bat&lg={league}&qual=y&type=c,58,23,37,38,7,12,11,13,21,6,203,199&season={year2}&month=0&season1={year1}&ind=0&team={team}&rost=0&age=0&filter=&players=0&startdate={year1}-01-01&enddate={year2}-12-31&page=1_3&sort=3,d'
+    url_cf = f'https://www.fangraphs.com/leaders.aspx?pos=cf&stats=bat&lg={league}&qual=y&type=c,58,23,37,38,7,12,11,13,21,6,203,199&season={year2}&month=0&season1={year1}&ind=0&team={team}&rost=0&age=0&filter=&players=0&startdate={year1}-01-01&enddate={year2}-12-31&page=1_3&sort=3,d'
+    url_rf = f'https://www.fangraphs.com/leaders.aspx?pos=rf&stats=bat&lg={league}&qual=y&type=c,58,23,37,38,7,12,11,13,21,6,203,199&season={year2}&month=0&season1={year1}&ind=0&team={team}&rost=0&age=0&filter=&players=0&startdate={year1}-01-01&enddate={year2}-12-31&page=1_3&sort=3,d'
+    url_dh = f'https://www.fangraphs.com/leaders.aspx?pos=dh&stats=bat&lg={league}&qual=y&type=c,58,23,37,38,7,12,11,13,21,6,203,199&season={year2}&month=0&season1={year1}&ind=0&team={team}&rost=0&age=0&filter=&players=0&startdate={year1}-01-01&enddate={year2}-12-31&page=1_2&sort=3,d'
     loop = asyncio.get_event_loop()  # initiates a loop where tasks can be completed asynchronously
     future_sp = loop.run_in_executor(None, requests.get, url_sp)  # opens one of the Fangraphs pages
     future_rp = loop.run_in_executor(None, requests.get, url_rp)
@@ -342,6 +335,7 @@ def loading():
     years_form = Years_Form(crsf_enabled=False)
     year1 = years_form.year_a.data
     year2 = years_form.year_b.data
+    team_or_league = years_form.team_or_league.data
     try:
         year1 = int(year1)
         if year1 < 1900 or year1 > 2021:  # catches if the year entered was before 1900 or after 2021
@@ -354,7 +348,7 @@ def loading():
             return redirect("/")
     except ValueError:
         return redirect("/")
-    return (render_template("loading.html", template_form=years_form, year1=year1, year2=year2))  # opens the loading page, sends the years
+    return (render_template("loading.html", template_form=years_form, year1=year1, year2=year2, team_or_league=team_or_league))  # opens the loading page, sends the years
 
 
 # the final page showing the All-Star team
@@ -363,9 +357,16 @@ def roster():
     years_form = Years_Form(crsf_enabled=False)
     year1 = years_form.year_a.data  # gets the years from the form
     year2 = years_form.year_b.data
+    team_or_league = years_form.team_or_league.data
+    league = "all"
+    team = "0"
+    if team_or_league == "in the American League":
+        league = "al"
+    elif team_or_league == "in the National League":
+        league = "nl"
     outer_loop = asyncio.new_event_loop()  # creates a new loop in order to run tasks asynchronously
     asyncio.set_event_loop(outer_loop)  # sets that loop in motion
-    html_sp, html_rp, html_c, html_1b, html_2b, html_3b, html_ss, html_lf, html_cf, html_rf, html_dh = outer_loop.run_until_complete(request_pages(year1, year2))  # calls request_pages function and waits until the loop is complete before returning values
+    html_sp, html_rp, html_c, html_1b, html_2b, html_3b, html_ss, html_lf, html_cf, html_rf, html_dh = outer_loop.run_until_complete(request_pages(year1, year2, league, team))  # calls request_pages function and waits until the loop is complete before returning values
     batters = prep_batters(html_c, html_1b, html_2b, html_3b, html_ss, html_lf, html_cf, html_rf, html_dh)  # parses HTML into batters
     pitchers = prep_pitchers(html_sp, html_rp)  # parses HTML into pitchers
     batters_unduplicated = check_for_duplicates(batters)  # consolidates players who appeared at multiple positions
@@ -373,7 +374,7 @@ def roster():
     final_pitchers = select_top_pitchers(pitchers)  # selects the top 12 pitchers
     final_batters = select_top_batters(batters_unduplicated)  # selects the top 13 batters
     honorable_mentions = generate_mentions(all_players, final_batters, final_pitchers)
-    return (render_template("roster.html", year_start = year1, year_ending = year2, pitchers=final_pitchers, batters=final_batters, honorable_mentions = honorable_mentions))
+    return (render_template("roster.html", year_start = year1, year_ending = year2, team_or_league=team_or_league, pitchers=final_pitchers, batters=final_batters, honorable_mentions = honorable_mentions))
 
 
 # the page that displays if there is a timeout error
