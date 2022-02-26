@@ -15,6 +15,8 @@ app.config["SECRET_KEY"] = "mysecret"
 # each pitcher will be an object with statistical member fields
 class Pitcher:
     position = ""
+    pos = 0
+    pos_sort = 0
     name = ""
     war = 0  # wins above replacement - an advanced metric for measuring a player's value
     era = 0  # earned run average
@@ -59,7 +61,7 @@ def generate_batters(req, position, stat_adjustment):
     soup = BeautifulSoup(req.content, 'html5lib')  # stores HTML from website in a manipulable form
     table = soup.find(id="LeaderBoard1_dg1_ctl00")  # searches HTML for relevant section
     batters = []
-    num_rows = 3  # number of players per position
+    num_rows = 3 + stat_adjustment  # number of players per position
     for row_num in range(0, num_rows):
         raw_row = str(table.find(id=f"LeaderBoard1_dg1_ctl00__{row_num}"))  # isolates each player's row
         raw_row_split = raw_row.split("</td>")  # splits data into columns
@@ -100,6 +102,7 @@ def generate_batters(req, position, stat_adjustment):
         batter.pos_sort = batter.pos
         if batter.name != "":
             batters.append(batter)  # adds current batter to list of batters
+            print(f"{batter.position} {batter.name}")
     return batters
 
 
@@ -108,7 +111,7 @@ def generate_pitchers(req, position, stat_adjustment):
     pitchers = []
     soup = BeautifulSoup(req.content, 'html5lib')
     table = soup.find(id="LeaderBoard1_dg1_ctl00")
-    num_rows = 9
+    num_rows = 10
     for row_num in range(0, num_rows):
         raw_row = str(table.find(id=f"LeaderBoard1_dg1_ctl00__{row_num}"))
         raw_row_split = raw_row.split("</td>")
@@ -186,6 +189,7 @@ def select_top_batters(batters):
     final_batters = []
     position_count = {2:0, 3:0, 4:0, 5:0, 6:0, 7:0, 8:0, 9:0}  # number of players selected for each numerical position
     for batter in batters:
+        print(len(final_batters))
         if (batter.rank == 1 and batter.pos != 10):  # selects the #1 ranked player at each position except DH
             final_batters.append(batter)
             position_count[batter.pos] = 1  # adds 1 to the position count
@@ -211,7 +215,7 @@ def select_top_batters(batters):
     backup_outfielder = False  # whether a backup outfielder has been selected (required)
     designated_hitter = False  # whether a designated hitter has been selected (not required, max 1)
     flex_reserves = 2  # the number of reserve spots available for any position (2 held for backup infielder and outfielder)
-    while reserves < 4:  # iterates until all reserve spots are filled
+    while reserves < 4 and len(batters) > 0:  # iterates until all reserve spots are filled
         player = batters.pop(0)  # grabs the highest WAR remaining player and also removes them from the pool
         if (player.pos == 2 or player.pos == 3) and flex_reserves > 0:  # catchers and 1st basemen are only selected if flex spots are available
             final_batters.append(player)
@@ -246,7 +250,7 @@ def select_top_batters(batters):
 
 # chooses 12 of the 16 pitchers to make the All Star team
 def select_top_pitchers(pitchers):
-    final_pitchers = [pitchers.pop(11),pitchers.pop(10),pitchers.pop(9),pitchers.pop(4),pitchers.pop(3),pitchers.pop(2),pitchers.pop(1),pitchers.pop(0)]  # selects the top 3 relievers and top 5 starters by WAR
+    final_pitchers = [pitchers.pop(12),pitchers.pop(11),pitchers.pop(10),pitchers.pop(4),pitchers.pop(3),pitchers.pop(2),pitchers.pop(1),pitchers.pop(0)]  # selects the top 3 relievers and top 5 starters by WAR
     pitchers.sort(key=lambda x: -float(x.war))  # sorts all remaining pitchers by WAR
     final_pitchers.append(pitchers.pop(3))  # selects the next 4 highest WAR pitchers
     final_pitchers.append(pitchers.pop(2))
@@ -266,17 +270,19 @@ def generate_mentions(all_players, final_batters, final_pitchers):
 
 # asynchronously request the HTML of 11 Fangraphs web pages, 1 for each position
 async def request_pages(year1, year2, league, team, stat_adjustment):
-    url_sp = f'https://www.fangraphs.com/leaders.aspx?pos=all&stats=pit&lg={league}&qual=0&type=c,59,6,42,4,11,24,13&season={year2}&month=0&season1={year1}&ind=0&team={team}&rost=0&age=0&filter=&players=0&startdate={year1}-01-01&enddate={year2}-12-31&page=1_9&sort={3-stat_adjustment},d'
-    url_rp = f'https://www.fangraphs.com/leaders.aspx?pos=all&stats=rel&lg={league}&qual=0&type=c,59,6,42,4,11,24,13&season={year2}&month=0&season1={year1}&ind=0&team={team}&rost=0&age=0&filter=&players=0&startdate={year1}-01-01&enddate={year2}-12-31&page=1_7&sort={3-stat_adjustment},d'
-    url_c = f'https://www.fangraphs.com/leaders.aspx?pos=c&stats=bat&lg={league}&qual=0&type=c,58,23,37,38,7,12,11,13,21,6,203,199&season={year2}&month=0&season1={year1}&ind=0&team={team}&rost=0&age=0&filter=&players=0&startdate={year1}-01-01&enddate={year2}-12-31&page=1_3&sort={3-stat_adjustment},d'
-    url_1b = f'https://www.fangraphs.com/leaders.aspx?pos=1b&stats=bat&lg={league}&qual=0&type=c,58,23,37,38,7,12,11,13,21,6,203,199&season={year2}&month=0&season1={year1}&ind=0&team={team}&rost=0&age=0&filter=&players=0&startdate={year1}-01-01&enddate={year2}-12-31&page=1_3&sort={3-stat_adjustment},d'
-    url_2b = f'https://www.fangraphs.com/leaders.aspx?pos=2b&stats=bat&lg={league}&qual=0&type=c,58,23,37,38,7,12,11,13,21,6,203,199&season={year2}&month=0&season1={year1}&ind=0&team={team}&rost=0&age=0&filter=&players=0&startdate={year1}-01-01&enddate={year2}-12-31&page=1_3&sort={3-stat_adjustment},d'
-    url_3b = f'https://www.fangraphs.com/leaders.aspx?pos=3b&stats=bat&lg={league}&qual=0&type=c,58,23,37,38,7,12,11,13,21,6,203,199&season={year2}&month=0&season1={year1}&ind=0&team={team}&rost=0&age=0&filter=&players=0&startdate={year1}-01-01&enddate={year2}-12-31&page=1_3&sort={3-stat_adjustment},d'
-    url_ss = f'https://www.fangraphs.com/leaders.aspx?pos=ss&stats=bat&lg={league}&qual=0&type=c,58,23,37,38,7,12,11,13,21,6,203,199&season={year2}&month=0&season1={year1}&ind=0&team={team}&rost=0&age=0&filter=&players=0&startdate={year1}-01-01&enddate={year2}-12-31&page=1_3&sort={3-stat_adjustment},d'
-    url_lf = f'https://www.fangraphs.com/leaders.aspx?pos=lf&stats=bat&lg={league}&qual=0&type=c,58,23,37,38,7,12,11,13,21,6,203,199&season={year2}&month=0&season1={year1}&ind=0&team={team}&rost=0&age=0&filter=&players=0&startdate={year1}-01-01&enddate={year2}-12-31&page=1_3&sort={3-stat_adjustment},d'
-    url_cf = f'https://www.fangraphs.com/leaders.aspx?pos=cf&stats=bat&lg={league}&qual=0&type=c,58,23,37,38,7,12,11,13,21,6,203,199&season={year2}&month=0&season1={year1}&ind=0&team={team}&rost=0&age=0&filter=&players=0&startdate={year1}-01-01&enddate={year2}-12-31&page=1_3&sort={3-stat_adjustment},d'
-    url_rf = f'https://www.fangraphs.com/leaders.aspx?pos=rf&stats=bat&lg={league}&qual=0&type=c,58,23,37,38,7,12,11,13,21,6,203,199&season={year2}&month=0&season1={year1}&ind=0&team={team}&rost=0&age=0&filter=&players=0&startdate={year1}-01-01&enddate={year2}-12-31&page=1_3&sort={3-stat_adjustment},d'
-    url_dh = f'https://www.fangraphs.com/leaders.aspx?pos=dh&stats=bat&lg={league}&qual=0&type=c,58,23,37,38,7,12,11,13,21,6,203,199&season={year2}&month=0&season1={year1}&ind=0&team={team}&rost=0&age=0&filter=&players=0&startdate={year1}-01-01&enddate={year2}-12-31&page=1_2&sort={3-stat_adjustment},d'
+    min_ip = min(10*(int(year2)-int(year1)+1),100)
+    min_pa = min(20*(int(year2)-int(year1)+1),200)
+    url_sp = f'https://www.fangraphs.com/leaders.aspx?pos=all&stats=sta&lg={league}&qual={min_ip}&type=c,59,6,42,4,11,24,13&season={year2}&month=0&season1={year1}&ind=0&team={team}&rost=0&age=0&filter=&players=0&startdate={year1}-01-01&enddate={year2}-12-31&page=1_10&sort={3-stat_adjustment},d'
+    url_rp = f'https://www.fangraphs.com/leaders.aspx?pos=all&stats=rel&lg={league}&qual={min_ip}&type=c,59,6,42,4,11,24,13&season={year2}&month=0&season1={year1}&ind=0&team={team}&rost=0&age=0&filter=&players=0&startdate={year1}-01-01&enddate={year2}-12-31&page=1_7&sort={3-stat_adjustment},d'
+    url_c = f'https://www.fangraphs.com/leaders.aspx?pos=c&stats=bat&lg={league}&qual={min_pa}&type=c,58,23,37,38,7,12,11,13,21,6,203,199&season={year2}&month=0&season1={year1}&ind=0&team={team}&rost=0&age=0&filter=&players=0&startdate={year1}-01-01&enddate={year2}-12-31&page=1_{3+stat_adjustment}&sort={3-stat_adjustment},d'
+    url_1b = f'https://www.fangraphs.com/leaders.aspx?pos=1b&stats=bat&lg={league}&qual={min_pa}&type=c,58,23,37,38,7,12,11,13,21,6,203,199&season={year2}&month=0&season1={year1}&ind=0&team={team}&rost=0&age=0&filter=&players=0&startdate={year1}-01-01&enddate={year2}-12-31&page=1_{3+stat_adjustment}&sort={3-stat_adjustment},d'
+    url_2b = f'https://www.fangraphs.com/leaders.aspx?pos=2b&stats=bat&lg={league}&qual={min_pa}&type=c,58,23,37,38,7,12,11,13,21,6,203,199&season={year2}&month=0&season1={year1}&ind=0&team={team}&rost=0&age=0&filter=&players=0&startdate={year1}-01-01&enddate={year2}-12-31&page=1_{3+stat_adjustment}&sort={3-stat_adjustment},d'
+    url_3b = f'https://www.fangraphs.com/leaders.aspx?pos=3b&stats=bat&lg={league}&qual={min_pa}&type=c,58,23,37,38,7,12,11,13,21,6,203,199&season={year2}&month=0&season1={year1}&ind=0&team={team}&rost=0&age=0&filter=&players=0&startdate={year1}-01-01&enddate={year2}-12-31&page=1_{3+stat_adjustment}&sort={3-stat_adjustment},d'
+    url_ss = f'https://www.fangraphs.com/leaders.aspx?pos=ss&stats=bat&lg={league}&qual={min_pa}&type=c,58,23,37,38,7,12,11,13,21,6,203,199&season={year2}&month=0&season1={year1}&ind=0&team={team}&rost=0&age=0&filter=&players=0&startdate={year1}-01-01&enddate={year2}-12-31&page=1_{3+stat_adjustment}&sort={3-stat_adjustment},d'
+    url_lf = f'https://www.fangraphs.com/leaders.aspx?pos=lf&stats=bat&lg={league}&qual={min_pa}&type=c,58,23,37,38,7,12,11,13,21,6,203,199&season={year2}&month=0&season1={year1}&ind=0&team={team}&rost=0&age=0&filter=&players=0&startdate={year1}-01-01&enddate={year2}-12-31&page=1_{3+stat_adjustment}&sort={3-stat_adjustment},d'
+    url_cf = f'https://www.fangraphs.com/leaders.aspx?pos=cf&stats=bat&lg={league}&qual={min_pa}&type=c,58,23,37,38,7,12,11,13,21,6,203,199&season={year2}&month=0&season1={year1}&ind=0&team={team}&rost=0&age=0&filter=&players=0&startdate={year1}-01-01&enddate={year2}-12-31&page=1_{3+stat_adjustment}&sort={3-stat_adjustment},d'
+    url_rf = f'https://www.fangraphs.com/leaders.aspx?pos=rf&stats=bat&lg={league}&qual={min_pa}&type=c,58,23,37,38,7,12,11,13,21,6,203,199&season={year2}&month=0&season1={year1}&ind=0&team={team}&rost=0&age=0&filter=&players=0&startdate={year1}-01-01&enddate={year2}-12-31&page=1_{3+stat_adjustment}&sort={3-stat_adjustment},d'
+    url_dh = f'https://www.fangraphs.com/leaders.aspx?pos=dh&stats=bat&lg={league}&qual={min_pa}&type=c,58,23,37,38,7,12,11,13,21,6,203,199&season={year2}&month=0&season1={year1}&ind=0&team={team}&rost=0&age=0&filter=&players=0&startdate={year1}-01-01&enddate={year2}-12-31&page=1_2&sort={3-stat_adjustment},d'
     loop = asyncio.get_event_loop()  # initiates a loop where tasks can be completed asynchronously
     future_sp = loop.run_in_executor(None, requests.get, url_sp)  # opens one of the Fangraphs pages
     future_rp = loop.run_in_executor(None, requests.get, url_rp)
@@ -379,14 +385,22 @@ def roster():
     outer_loop = asyncio.new_event_loop()  # creates a new loop in order to run tasks asynchronously
     asyncio.set_event_loop(outer_loop)  # sets that loop in motion
     html_sp, html_rp, html_c, html_1b, html_2b, html_3b, html_ss, html_lf, html_cf, html_rf, html_dh = outer_loop.run_until_complete(request_pages(year1, year2, league, team, stat_adjustment))  # calls request_pages function and waits until the loop is complete before returning values
+    print("prepping batters...")
     batters = prep_batters(stat_adjustment, html_c, html_1b, html_2b, html_3b, html_ss, html_lf, html_cf, html_rf, html_dh)  # parses HTML into batters
+    print("prepping pitchers...")
     pitchers = prep_pitchers(stat_adjustment, html_sp, html_rp)  # parses HTML into pitchers
+    print("checking for duplicate batters...")
     batters_unduplicated = check_for_duplicates(batters)  # consolidates players who appeared at multiple positions
+    print("checking for duplicate pitchers...")
     pitchers_unduplicated = check_for_duplicates(pitchers)
     all_players = pitchers_unduplicated + batters_unduplicated
+    print("selecting final pitchers...")
     final_pitchers = select_top_pitchers(pitchers_unduplicated)  # selects the top 12 pitchers
+    print("selecting final batters...")
     final_batters = select_top_batters(batters_unduplicated)  # selects the top 13 batters
+    print("selecting honorable mentions...")
     honorable_mentions = generate_mentions(all_players, final_batters, final_pitchers)
+    print("finished...")
     return (render_template("roster.html", year_start = year1, year_ending = year2, team_or_league=team_or_league, pitchers=final_pitchers, batters=final_batters, honorable_mentions = honorable_mentions))
 
 
