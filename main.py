@@ -102,7 +102,6 @@ def generate_batters(req, position, stat_adjustment):
         batter.pos_sort = batter.pos
         if batter.name != "":
             batters.append(batter)  # adds current batter to list of batters
-            print(f"{batter.position} {batter.name}")
     return batters
 
 
@@ -189,7 +188,6 @@ def select_top_batters(batters):
     final_batters = []
     position_count = {2:0, 3:0, 4:0, 5:0, 6:0, 7:0, 8:0, 9:0}  # number of players selected for each numerical position
     for batter in batters:
-        print(len(final_batters))
         if (batter.rank == 1 and batter.pos != 10):  # selects the #1 ranked player at each position except DH
             final_batters.append(batter)
             position_count[batter.pos] = 1  # adds 1 to the position count
@@ -347,6 +345,7 @@ def loading():
     year1 = years_form.year_a.data
     year2 = years_form.year_b.data
     team_or_league = years_form.team_or_league.data
+    print(f"Searching {year1}-{year2} {team_or_league}...")
     try:
         year1 = int(year1)
         if year1 < 1900 or year1 > 2021:  # catches if the year entered was before 1900 or after 2021
@@ -385,22 +384,14 @@ def roster():
     outer_loop = asyncio.new_event_loop()  # creates a new loop in order to run tasks asynchronously
     asyncio.set_event_loop(outer_loop)  # sets that loop in motion
     html_sp, html_rp, html_c, html_1b, html_2b, html_3b, html_ss, html_lf, html_cf, html_rf, html_dh = outer_loop.run_until_complete(request_pages(year1, year2, league, team, stat_adjustment))  # calls request_pages function and waits until the loop is complete before returning values
-    print("prepping batters...")
     batters = prep_batters(stat_adjustment, html_c, html_1b, html_2b, html_3b, html_ss, html_lf, html_cf, html_rf, html_dh)  # parses HTML into batters
-    print("prepping pitchers...")
     pitchers = prep_pitchers(stat_adjustment, html_sp, html_rp)  # parses HTML into pitchers
-    print("checking for duplicate batters...")
     batters_unduplicated = check_for_duplicates(batters)  # consolidates players who appeared at multiple positions
-    print("checking for duplicate pitchers...")
     pitchers_unduplicated = check_for_duplicates(pitchers)
     all_players = pitchers_unduplicated + batters_unduplicated
-    print("selecting final pitchers...")
     final_pitchers = select_top_pitchers(pitchers_unduplicated)  # selects the top 12 pitchers
-    print("selecting final batters...")
     final_batters = select_top_batters(batters_unduplicated)  # selects the top 13 batters
-    print("selecting honorable mentions...")
     honorable_mentions = generate_mentions(all_players, final_batters, final_pitchers)
-    print("finished...")
     return (render_template("roster.html", year_start = year1, year_ending = year2, team_or_league=team_or_league, pitchers=final_pitchers, batters=final_batters, honorable_mentions = honorable_mentions))
 
 
